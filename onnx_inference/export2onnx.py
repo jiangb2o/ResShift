@@ -106,6 +106,13 @@ class DecoderExportWrapper(nn.Module):
     def forward(self, z: torch.Tensor) -> torch.Tensor:
         return self.autoencoder.decode(z)
 
+
+def resolve_project_path(path_str: str) -> Path:
+    path = Path(path_str).expanduser()
+    if path.is_absolute():
+        return path.resolve()
+    return (PROJECT_ROOT / path).resolve()
+
 def export_unet(args, configs):
     # Verify checkpoint exists
     ckpt_path = Path(configs.model.ckpt_path).expanduser()
@@ -218,6 +225,10 @@ def export_unet(args, configs):
     pass
 
 def export_autoencoder(args, configs):
+    # onnx 不支持 xformers 相关的操作，导出前关闭该分支, 使用普通的 attention 实现
+    from ldm.modules.diffusionmodules import model as diffusion_model
+    diffusion_model.XFORMERS_IS_AVAILBLE = False
+
     if "autoencoder" not in configs:
         raise KeyError(
             f"Config does not contain `autoencoder`. "
@@ -263,11 +274,16 @@ def export_autoencoder(args, configs):
         decoder_wrapper = decoder_wrapper.cuda()
 
 
+    encoder_output_path = resolve_project_path(configs.export.encoder_output_path)
+    decoder_output_path = resolve_project_path(configs.export.decoder_output_path)
+    encoder_output_path.parent.mkdir(parents=True, exist_ok=True)
+    decoder_output_path.parent.mkdir(parents=True, exist_ok=True)
+
     with torch.no_grad():
         torch.onnx.export(
             encoder_wrapper,
             (enc_input,),
-            configs.export.encoder_output_path,
+            str(encoder_output_path),
             opset_version=configs.export.opset_version,
             input_names=["image"],
             output_names=["latent"],
@@ -275,6 +291,7 @@ def export_autoencoder(args, configs):
                 "image": {0: "batch", 2: "height", 3: "width"},
                 "latent": {0: "batch", 2: "height", 3: "width"},
             },
+            verbose=configs.export.verbose,
             do_constant_folding=configs.export.do_constant_folding,
             export_params=True,
         )
@@ -282,7 +299,7 @@ def export_autoencoder(args, configs):
         torch.onnx.export(
             decoder_wrapper,
             (dec_input,),
-            configs.export.decoder_output_path,
+            str(decoder_output_path),
             opset_version=configs.export.opset_version,
             input_names=["latent"],
             output_names=["image"],
@@ -290,13 +307,14 @@ def export_autoencoder(args, configs):
                 "latent": {0: "batch", 2: "height", 3: "width"},
                 "image": {0: "batch", 2: "height", 3: "width"},
             },
+            verbose=configs.export.verbose,
             do_constant_folding=configs.export.do_constant_folding,
             export_params=True,
         )
 
     print("AutoEncoder Export successfully!")
-    print(f"  Encoder: {configs.export.encoder_output_path}")
-    print(f"  Decoder: {configs.export.decoder_output_path}")
+    print(f"  Encoder: {encoder_output_path}")
+    print(f"  Decoder: {decoder_output_path}")
 
 
 def main():
@@ -307,7 +325,7 @@ def main():
     config_path = Path(args.config).expanduser().resolve()
     configs = OmegaConf.load(str(config_path))
 
-    print(f"export args:\n export unet: {args.unet}\n export autoencoder: {args.autoencoder}\n")
+    print(f"export args: \ndevice: {args.device}\n export unet: {args.unet}\n export autoencoder: {args.autoencoder}\n")
 
     if(util_opts.str2bool(args.unet)):
         print("\n=================exporting Unet Model...=================")
