@@ -9,7 +9,7 @@ from pathlib import Path
 from omegaconf import OmegaConf
 from sampler import ResShiftSampler
 
-from utils import util_image
+from ResShift.utils import util_image
 from basicsr.utils.download_util import load_file_from_url
 
 _STEP = {

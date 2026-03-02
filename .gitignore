@@ -3,3 +3,4 @@ inference_result/
 **/__pycache__/
 database/
 result/
+weights/

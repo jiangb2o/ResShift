@@ -12,7 +12,7 @@ import random
 import argparse
 import numpy as np
 
-from utils import util_image
+from ResShift.utils import util_image
 from utils import util_common
 
 from datapipe.face_degradation_testing import face_degradation

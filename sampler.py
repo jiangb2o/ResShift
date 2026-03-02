@@ -278,6 +278,7 @@ class ResShiftSampler(BaseSampler):
         if self.num_gpus > 1:
             dist.barrier()
 
+        write_image = 0
         if in_path.is_dir():
             if mask_path is None:
                 data_config = {'type': 'base',
@@ -332,6 +333,7 @@ class ResShiftSampler(BaseSampler):
                         im_name = Path(micro_data['path'][jj]).stem
                         im_path = out_path / f"{im_name}.png"
                         util_image.imwrite(im_sr, im_path, chn='bgr', dtype_in='uint8')
+                        write_image += 1
             if self.num_gpus > 1:
                 dist.barrier()
         else:
@@ -351,6 +353,7 @@ class ResShiftSampler(BaseSampler):
             util_image.imwrite(im_sr, im_path, chn='bgr', dtype_in='uint8')
 
         self.write_log(f"Processing done, enjoy the results in {str(out_path)}")
+        self.write_log(f"Write Image num: {str(write_image)}")
 
 if __name__ == '__main__':
     pass

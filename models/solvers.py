@@ -114,7 +114,7 @@ if __name__ == '__main__':
     import sys
     from pathlib import Path
     sys.path.append(str(Path(__file__).resolve().parents[1]))
-    from utils import util_image
+    from ResShift.utils import util_image
     from datapipe.masks.train import process_mask
 
     # mask_file_names = [x for x in Path('../lama/LaMa_test_images').glob('*mask*.png')]

@@ -17,7 +17,7 @@ from datapipe.datasets import create_dataset
 
 from utils import util_net
 from utils import util_common
-from utils import util_image
+from ResShift.utils import util_image
 
 from basicsr.utils import DiffJPEG, USMSharp
 from basicsr.utils.img_process_util import filter2D
@@ -98,7 +98,8 @@ class TrainerBase:
         logtxet_path = save_dir / 'training.log'
         if self.rank == 0:
             if logtxet_path.exists():
-                assert self.configs.resume
+                #assert self.configs.resume
+                pass
             self.logger = logger
             self.logger.remove()
             self.logger.add(logtxet_path, format="{message}", mode='a', level='INFO')
@@ -457,7 +458,7 @@ class TrainerDifIR(TrainerBase):
             params = self.configs.autoencoder.get('params', dict)
             autoencoder = util_common.get_obj_from_str(self.configs.autoencoder.target)(**params)
             autoencoder.cuda()
-            if self.configs.autoencoder.tune_decoder:
+            if self.configs.autoencoder.get('tune_decoder', False):
                 self.load_model(autoencoder, self.configs.autoencoder.ckpt_path, tag='autoencoder', strict=True)
                 if self.rank == 0:
                     num_params = 0
@@ -481,7 +482,7 @@ class TrainerDifIR(TrainerBase):
         else:
             self.autoencoder = None
 
-        if self.configs.autoencoder.params.lora_tune_decoder or self.configs.autoencoder.tune_decoder:
+        if self.configs.autoencoder.params.get('lora_tune_decoder', False) or self.configs.autoencoder.get('tune_decoder', False):
             self.freeze_model(self.model)
 
         # LPIPS metric
@@ -1093,7 +1094,7 @@ def my_worker_init_fn(worker_id):
     np.random.seed(np.random.get_state()[1][0] + worker_id)
 
 if __name__ == '__main__':
-    from utils import util_image
+    from ResShift.utils import util_image
     from  einops import rearrange
     im1 = util_image.imread('./testdata/inpainting/val/places/Places365_val_00012685_crop000.png',
                             chn = 'rgb', dtype='float32')

@@ -1,4 +1,4 @@
-name: resshift
+name: ResShift
 channels:
   - pytorch
   - nvidia

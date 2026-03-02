@@ -20,7 +20,7 @@ import torch
 import torch.nn as nn
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
-from utils import util_image
+from ResShift.utils import util_image
 
 def load_im_tensor(im_path):
     """
