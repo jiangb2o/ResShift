@@ -1,0 +1,3 @@
+models/*.onnx
+outputs/*
+!outputs/.gitkeep
