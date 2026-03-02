@@ -11,15 +11,17 @@ ONNX使用计算图来表示模型, 每个节点代表一个操作, 边代表节
 
 ## 导出为 ONNX
 
-目前的导出代码只导出了 Diffusion 步骤中的单个前向 UNet 过程. 而实际的推理为三段式:
+而实际的推理为三段式:
 * encoder
-* diffusion (多步)
+* unet (多步)
 * decoder  
-因此, 在使用导出 onnx 格式进行推理时, 需要自行部署 encoder 和 decoder 步骤, 并设计循环控制、步数以及噪声注入. 如果将这些步骤都一并导出, 会造成模型显著变大且难以维护.
+因此, 在使用导出 onnx 格式进行推理时, 先对 encoder 和 decoder 进行导出. 再导出 unet. 并设计循环控制、步数以及噪声注入. 
+如果将这些步骤都一并导出, 会造成模型显著变大(unet 循环)且难以维护.
 
 ```bash
-cd /home/ubuntu/ResShift/onnx_inference
+bash export2onnx.sh
+```
 
-# 基本导出
-python export2onnx.py --config export_config.yaml
-
+## Encoder 导出问题  
+AutoEncoder 模块中使用了 `xformers.ops.memory_efficient_attention`  
+导致以下错误: RuntimeError: unsupported output type: int, from operator:xformers::efficient_attention_forward_cutlass  

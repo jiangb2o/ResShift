@@ -5,7 +5,7 @@ trainer:
 
 model:
   target: models.unet.UNetModelSwin
-  ckpt_path: ~
+  ckpt_path: weights/resshift_realsrx4_s15_v1.pth
   params:
     image_size: 64
     in_channels: 3
@@ -68,6 +68,18 @@ autoencoder:
       attn_resolutions: []
       dropout: 0.0
       padding_mode: zeros
+
+# Export settings
+export:
+  unet_output_path: onnx_inference/models/resshift_model.onnx    # Output ONNX file path
+  encoder_output_path: onnx_inference/models/autoencoder_encoder.onnx
+  decoder_output_path: onnx_inference/models/autoencoder_decoder.onnx
+  opset_version: 17                   # ONNX opset version
+  input_name: input                   # Input tensor name
+  output_name: output                 # Output tensor name
+  input_shape: [1, 3, 64, 64]         # latent Input shape (batch, channels, height, width)
+  do_constant_folding: True           # Enable constant folding optimization
+  verbose: False                      # Verbose logging during export
 
 degradation:
   sf: 4

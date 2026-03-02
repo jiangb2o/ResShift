@@ -1,6 +1,6 @@
 # ResShift ONNX Full Inference
 
-本目录目标：基于已导出的 `weights/resshift_model.onnx`（UNet 单步），补齐完整 ONNX 推理链路：
+本目录目标：基于已导出的 `resshift_model.onnx`（UNet 单步），补齐完整 ONNX 推理链路：
 
 1. Encoder ONNX：将上采样后的 LQ 图像编码到 latent。
 2. UNet ONNX：在扩散时间步中迭代预测。
@@ -21,14 +21,13 @@
 ### 实现
 
 新增脚本：
-- `onnx_inference/export_autoencoder_onnx.py`
+- `oexport_autoencoder_onnx.py`
 
 实现点：
 - 从完整配置（默认 `configs/realsr_swinunet_realesrgan256.yaml`）加载 autoencoder。
 - 导出两个图：
   - `EncoderExportWrapper`: `image -> latent`
   - `DecoderExportWrapper`: `latent -> image`
-- CPU 导出场景下强制禁用 xformers memory-efficient attention，避免导出阶段报错。
 - 输出动态轴（batch/height/width）以支持可变分辨率。
 
 ### 验证
