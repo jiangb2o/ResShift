@@ -1,11 +1,15 @@
 import torch
 import torch.nn as nn
 import torch.onnx
-import os
 import sys
 import argparse
 from pathlib import Path
 from omegaconf import OmegaConf
+
+# Ensure project root is importable when this script is launched by path.
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from utils import util_common, util_net
 
@@ -13,14 +17,7 @@ from utils import util_common, util_net
 try:
     import onnx
 except ImportError:
-    print("WARNING: onnx module not found. Installing...")
-    os.system(f"{sys.executable} -m pip install onnx -q")
-    try:
-        import onnx
-        print("✓ onnx installed successfully")
-    except ImportError:
-        print("ERROR: Failed to install onnx. Please run: pip install onnx onnxruntime")
-        sys.exit(1)
+    onnx = None
 
 
 def get_export_parser():
@@ -67,7 +64,7 @@ class ResShiftExportWrapper(nn.Module):
     Wrapper module for ResShift model export.
     Exports the UNet model for a single diffusion step.
     """
-    def __init__(self, model, lq_size=64, scale_factor=4):
+    def __init__(self, model, lq_size=64, scale_factor=1.0):
         super().__init__()
         self.model = model
         self.lq_size = lq_size
@@ -105,7 +102,8 @@ def main():
     
     # Load export config
     print(f"Loading config from {args.config}...")
-    configs = OmegaConf.load(args.config)
+    config_path = Path(args.config).expanduser().resolve()
+    configs = OmegaConf.load(str(config_path))
     
     # Override with command line arguments if provided
     if args.ckpt_path:
@@ -116,9 +114,20 @@ def main():
         configs.export.input_shape = list(args.input_shape)
     
     # Verify checkpoint exists
-    ckpt_path = configs.model.ckpt_path
-    if not Path(ckpt_path).exists():
+    ckpt_path = Path(configs.model.ckpt_path).expanduser()
+    if not ckpt_path.is_absolute():
+        ckpt_from_project = (PROJECT_ROOT / ckpt_path).resolve()
+        ckpt_from_config = (config_path.parent / ckpt_path).resolve()
+        ckpt_path = ckpt_from_project if ckpt_from_project.exists() else ckpt_from_config
+    if not ckpt_path.exists():
         raise FileNotFoundError(f"Checkpoint not found: {ckpt_path}")
+    configs.model.ckpt_path = str(ckpt_path)
+
+    output_path = Path(configs.export.output_path).expanduser()
+    if not output_path.is_absolute():
+        output_path = (PROJECT_ROOT / output_path).resolve()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    configs.export.output_path = str(output_path)
     
     print(f"\n=== ONNX Export Configuration ===")
     print(f"Checkpoint: {ckpt_path}")
@@ -126,6 +135,9 @@ def main():
     print(f"Input shape: {configs.export.input_shape}")
     print(f"Opset version: {configs.export.opset_version}")
     print(f"Device: {args.device}\n")
+
+    if onnx is None:
+        raise ImportError("onnx is not installed. Please run: pip install onnx onnxruntime")
     
     # Build model
     print("Building model from config...")
@@ -148,26 +160,23 @@ def main():
     wrapper_model = ResShiftExportWrapper(
         model, 
         lq_size=configs.model.params.lq_size,
-        scale_factor=configs.diffusion.params.sf
     )
     if args.device == "cuda":
         wrapper_model = wrapper_model.cuda()
     wrapper_model.eval()
     
     # Create dummy inputs
-    # All inputs should have the same spatial dimensions (lq_size)
     B, C, H, W = configs.export.input_shape
-    H_lq = configs.model.params.lq_size  # Use configured lq_size
-    W_lq = configs.model.params.lq_size
+    lq_H, lq_W = configs.model.params.lq_size, configs.model.params.lq_size
     
-    # x: current latent state (same size as lq for single-step inference)
-    x_input = torch.randn(B, C, H_lq, W_lq)
+    # 当前扩散步输入
+    x_input = torch.randn(B, C, H, W)
     
-    # lq: low-quality condition image
-    lq_input = torch.randn(B, C, H_lq, W_lq)
+    # lq: low quailty 条件输入
+    lq_input = torch.randn(B, C, lq_H, lq_W)
     
     # timesteps: diffusion timestep
-    timesteps_input = torch.tensor([10], dtype=torch.long)  # Example timestep
+    timesteps_input = torch.full((B,), 10, dtype=torch.long)
     
     if args.device == "cuda":
         x_input = x_input.cuda()
@@ -181,14 +190,14 @@ def main():
     
     # Export to ONNX
     print("\nExporting model to ONNX format...")
-    
+
     # Disable gradients for export
     with torch.no_grad():
         torch.onnx.export(
             wrapper_model,
             (x_input, lq_input, timesteps_input),
             configs.export.output_path,
-            opset_version=11,  # Use opset 11 for better compatibility
+            opset_version=configs.export.opset_version,
             input_names=['x', 'lq', 'timesteps'],
             output_names=[configs.export.output_name],
             dynamic_axes={
@@ -208,11 +217,11 @@ def main():
     print(f"  Output file: {configs.export.output_path}")
     print(f"  File size: {file_size:.2f} MB")
     print(f"\nInputs:")
-    print(f"  - x: Latent representation [batch, 3, {H_lq}, {W_lq}]")
-    print(f"  - lq: Low-quality condition [batch, 3, {H_lq}, {W_lq}]")
+    print(f"  - x: Latent representation [batch, 3, {H}, {W}]")
+    print(f"  - lq: Low-quality condition [batch, 3, {H}, {W}]")
     print(f"  - timesteps: Diffusion timestep [batch]")
     print(f"\nOutput:")
-    print(f"  - output: Denoised latent [batch, 3, {H_lq}, {W_lq}]")
+    print(f"  - output: Denoised latent [batch, 3, {H}, {W}]")
     print(f"\nNote: This exports a single diffusion step of the UNet model.")
     print(f"For complete SR pipeline, you need to:")
     print(f"  1. Encode low-res image to latent space using autoencoder")
@@ -221,4 +230,4 @@ def main():
 
 
 if __name__ == '__main__':
-    mai()
+    main()
