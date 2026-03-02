@@ -57,7 +57,10 @@ def window_reverse(windows, window_size, H, W):
     Returns:
         x: (B, C, H, W)
     """
-    B = int(windows.shape[0] / (H * W / window_size / window_size))
+    # B = int(windows.shape[0] / (H * W / window_size / window_size))
+    # int类型强制转换导致 onnx 导出时将其转换为常量. 因此改为动态计算B
+    num_windows = (H * W) // (window_size * window_size)
+    B = windows.shape[0] // num_windows
     x = windows.view(B, H // window_size, W // window_size, window_size, window_size, -1)
     x = x.permute(0, 5, 1, 3, 2, 4).contiguous().view(B, -1, H, W)
     return x
@@ -92,7 +95,7 @@ class WindowAttention(nn.Module):
         # get pair-wise relative position index for each token inside the window
         coords_h = torch.arange(self.window_size[0])
         coords_w = torch.arange(self.window_size[1])
-        coords = torch.stack(torch.meshgrid([coords_h, coords_w]))  # 2, Wh, Ww
+        coords = torch.stack(torch.meshgrid([coords_h, coords_w], indexing="ij"))  # 2, Wh, Ww
         coords_flatten = torch.flatten(coords, 1)  # 2, Wh*Ww
         relative_coords = coords_flatten[:, :, None] - coords_flatten[:, None, :]  # 2, Wh*Ww, Wh*Ww
         relative_coords = relative_coords.permute(1, 2, 0).contiguous()  # Wh*Ww, Wh*Ww, 2

@@ -33,5 +33,37 @@ AutoEncoder 模块中使用了 `xformers.ops.memory_efficient_attention`
 Converting a tensor to a Python integer might cause the trace to be incorrect. We can't record the data flow of  Python values, so this value will be treated as a constant in the future. This means that the trace might not generalize to other inputs!  
 w_ = w_ * (int(c)**(-0.5))  
 
-其中的c为某个卷积的输出通道数, 从shape获取是一个维度为1的tensor. 转为int导致 Warning, 只需查到对应卷积的输出通道设置, 直接使用该int值即可解决问题  
+解决:  
+其中的c为某个卷积的输出通道数, 从shape获取是一个维度为1的tensor. 转为int无法记录, 导致计算图中该值不会根据输入动态改变. Warning, 只需查到对应卷积的输出通道设置, 直接使用该int值即可解决问题  
 
+## UNet 导出问题
+### UserWarning  
+/home/ubuntu/miniconda3/envs/ResShift/lib/python3.10/site-packages/torch/functional.py:504: UserWarning: torch.meshgrid: in an upcoming release, it will be required to pass the indexing argument. (Triggered internally at ../aten/src/ATen/native/TensorShape.cpp:3526.)
+  return _VF.meshgrid(tensors, **kwargs)  # type: ignore[attr-defined]
+
+解决:  
+在meshgrid调用处加上索引参数:  
+models/swin_transformer.py, line: 95
+```py
+coords = torch.stack(torch.meshgrid([coords_h, coords_w], indexing="ij")) 
+```
+
+### TracerWarning 将tensor转换为int导致
+/home/ubuntu/ResShift/models/swin_transformer.py:60: TracerWarning: Converting a tensor to a Python integer
+  might cause the trace to be incorrect. We can't record the data flow of Python values, so this value will be
+  treated as a constant in the future. This means that the trace might not generalize to other inputs!
+    B = int(windows.shape[0] / (H * W / window_size / window_size))
+
+同样是转为int无法记录的问题, 导致计算图中该值不会根据输入动态改变, 改为等价实现即可:  
+```py
+# B = int(windows.shape[0] / (H * W / window_size / window_size))
+# int类型强制转换导致 onnx 导出时将其转换为常量. 因此改为动态计算B
+num_windows = (H * W) // (window_size * window_size)
+B = windows.shape[0] // num_windows
+```
+
+## onnx模型推理验证
+
+1. 安装ONNX Runtime.
+```
+```

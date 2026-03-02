@@ -69,7 +69,10 @@ class Upsample(nn.Module):
             self.conv = conv_nd(dims, self.channels, self.out_channels, 3, padding=1)
 
     def forward(self, x):
-        assert x.shape[1] == self.channels
+        if not th.jit.is_tracing() and x.shape[1] != self.channels:
+            raise RuntimeError(
+                f"x.shape[1] != self.channels"
+            )
         if self.dims == 3:
             x = F.interpolate(
                 x, (x.shape[2], x.shape[3] * 2, x.shape[4] * 2), mode="nearest"
@@ -104,7 +107,10 @@ class Downsample(nn.Module):
             self.op = avg_pool_nd(dims, kernel_size=stride, stride=stride)
 
     def forward(self, x):
-        assert x.shape[1] == self.channels
+        if not th.jit.is_tracing() and x.shape[1] != self.channels:
+            raise RuntimeError(
+                f"x.shape[1] != self.channels"
+            )
         return self.op(x)
 
 class ResBlock(TimestepBlock):
@@ -1178,4 +1184,3 @@ class UNetModelConv(nn.Module):
         h = h.type(x.dtype)
         out = self.out(h)
         return out
-

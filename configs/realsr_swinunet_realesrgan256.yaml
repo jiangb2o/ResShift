@@ -78,7 +78,7 @@ export:
   input_name: input                   # Input tensor name
   output_name: output                 # Output tensor name
   input_shape: [1, 3, 64, 64]         # latent Input shape (batch, channels, height, width)
-  do_constant_folding: True           # Enable constant folding optimization
+  do_constant_folding: False          # 是否启用常量折叠优化(在导出时用一个常量结果替代多步算子)
   verbose: False                      # Verbose logging during export
 
 degradation:
