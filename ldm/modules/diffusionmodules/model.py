@@ -189,7 +189,9 @@ class AttnBlock(nn.Module):
         q = q.permute(0,2,1)   # b,hw,c
         k = k.reshape(b,c,h*w) # b,c,hw
         w_ = torch.bmm(q,k)     # b,hw,hw    w[b,i,j]=sum_c q[b,i,c]k[b,c,j]
-        w_ = w_ * (int(c)**(-0.5))
+        #  w_ = w_ * (int(c)**(-0.5))
+        # 转为int, 在转换为onnx过程中, 会被当成常量写进图中, 修改为等价稳定方式(c 为q的输出通道数, 通过q的网络定义可知q的输出通道数为in_channels)
+        w_ = w_ * (self.in_channels ** (-0.5))
         w_ = torch.nn.functional.softmax(w_, dim=2)
 
         # attend to values
