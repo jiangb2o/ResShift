@@ -18,15 +18,8 @@ ONNX使用计算图来表示模型, 每个节点代表一个操作, 边代表节
 因此, 在使用导出 onnx 格式进行推理时, 需要自行部署 encoder 和 decoder 步骤, 并设计循环控制、步数以及噪声注入. 如果将这些步骤都一并导出, 会造成模型显著变大且难以维护.
 
 ```bash
-cd /home/ubuntu/ResShift/export_model
+cd /home/ubuntu/ResShift/onnx_inference
 
 # 基本导出
 python export2onnx.py --config export_config.yaml
 
-# 或自定义参数
-python export2onnx.py \
-  --config export_config.yaml \
-  --output_path weights/resshift_model.onnx
-```
-
-**输出**：`resshift_model.onnx` (~500 MB)
