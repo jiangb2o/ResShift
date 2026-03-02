@@ -14,7 +14,12 @@ result_path="inference_result/imagenet_test_mymodel"
 
 
 # psrn, ssim, lpips 指标
-python cal_metrics_sr.py --gt_dir database/imagenet256_srx4/imagenet256/gt --sr_dir $result_path --device cuda:0
+# python cal_metrics_sr.py --gt_dir database/imagenet256_srx4/imagenet256/gt --sr_dir $result_path --device cuda:0
 
 # iqa 指标
 # python cal_iqa.py --sr_dir $result_path --device cuda:0
+
+
+# 单图推理
+LOCAL_RANK=0 python inference_resshift.py -i onnx_inference/outputs/shu.jpg \
+ -o onnx_inference/outputs/shu_sr --task realsr --scale 4 --version v1 --chop_size 64 --chop_stride 64 --bs 64
