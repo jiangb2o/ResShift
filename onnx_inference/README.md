@@ -53,7 +53,74 @@
 
 ## Step 2: 实现 ONNX 端扩散迭代脚本
 
-待实现。
+### 实现
+
+新增脚本：
+- `onnx_inference/run_onnx_pipeline.py`
+
+实现点：
+- 完整流程：
+  1. 读取 LQ 图像，归一化到 `[-1,1]`。
+  2. 进行与原仓库一致的 padding 处理（默认按 `lq_size` 对齐）。
+  3. `bicubic` 上采样后送入 Encoder ONNX 得到 `z_y`。
+  4. 按 diffusion 参数初始化 `z_T`。
+  5. 迭代 `t=T-1...0`：
+     - UNet ONNX 输入：`x`、`lq`、`timesteps`
+     - 按原公式计算 `pred_xstart`、`posterior mean`、`sigma` 并更新 `z_t`
+  6. `z_0` 输入 Decoder ONNX 得到 SR 图。
+  7. 反归一化并写出图像。
+- 支持参数：
+  - `--max_steps`：快速验证只跑前 N 个反向步。
+  - `--dry_run`：加载模型并校验接口，不执行推理。
+  - `--allow_reference`：允许无 `onnxruntime` 时使用 `onnx.reference`（极慢）。
+- 兼容性处理：
+  - 小图大补边时 `reflect` 不合法，自动退化为 `replicate` padding。
+  - 明确添加 runtime guard：无 `onnxruntime` 且非 dry-run 时直接报错。
+
+### 验证
+
+1) 干跑接口验证（成功）
+
+```bash
+OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 \
+/home/ubuntu/miniconda3/envs/ResShift/bin/python onnx_inference/run_onnx_pipeline.py \
+  --config configs/realsr_swinunet_realesrgan256.yaml \
+  --unet_onnx weights/resshift_model.onnx \
+  --encoder_onnx onnx_inference/models/autoencoder_encoder.onnx \
+  --decoder_onnx onnx_inference/models/autoencoder_decoder.onnx \
+  --input onnx_inference/outputs/test_lq.png \
+  --output onnx_inference/outputs/test_sr_step1.png \
+  --dry_run
+```
+
+输出要点：
+- 识别到模型接口：
+  - UNet 输入 `['x', 'lq', 'timesteps']`，输出 `output`
+  - Encoder 输入 `['image']`，输出 `latent`
+  - Decoder 输入 `['latent']`，输出 `image`
+- 形状链路正确：`LQ (1,3,64,64) -> upsampled (1,3,256,256)`
+
+2) 依赖保护验证（成功）
+
+在当前环境缺少 `onnxruntime` 时执行非 dry-run：
+
+```bash
+OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 \
+/home/ubuntu/miniconda3/envs/ResShift/bin/python onnx_inference/run_onnx_pipeline.py \
+  --config configs/realsr_swinunet_realesrgan256.yaml \
+  --unet_onnx weights/resshift_model.onnx \
+  --encoder_onnx onnx_inference/models/autoencoder_encoder.onnx \
+  --decoder_onnx onnx_inference/models/autoencoder_decoder.onnx \
+  --input onnx_inference/outputs/test_lq.png \
+  --output onnx_inference/outputs/test_sr_step1.png
+```
+
+输出要点：
+- 抛出预期错误：`onnxruntime is not installed...`。
+
+说明：
+- `onnx.reference` 在当前机器上执行大图 UNet/Decoder 极慢，不具备工程实用性；
+- 完整端到端推理应安装 `onnxruntime`（或 `onnxruntime-gpu`）后执行。
 
 ## Step 3: 端到端验证与使用说明
 
