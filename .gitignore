@@ -1,0 +1,5 @@
+images_test/
+inference_result/
+**/__pycache__/
+database/
+result/
