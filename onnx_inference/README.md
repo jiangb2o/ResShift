@@ -124,4 +124,65 @@ OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 \
 
 ## Step 3: 端到端验证与使用说明
 
-待实现。
+### 实现
+
+新增脚本：
+- `onnx_inference/validate_onnx_pipeline.py`
+
+作用：
+- 校验 3 个 ONNX 模型结构（`onnx.checker`）。
+- 读取并输出三者输入/输出名称。
+- 执行一次 Encoder ONNX 的真实前向（可在无 `onnxruntime` 时用 `onnx.reference`）。
+- 生成结构化报告：`onnx_inference/outputs/validation_report.json`。
+
+### 验证
+
+执行命令：
+
+```bash
+OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 \
+/home/ubuntu/miniconda3/envs/ResShift/bin/python onnx_inference/validate_onnx_pipeline.py
+```
+
+结果摘要：
+- `onnxruntime_available=false`（当前环境未安装）
+- 模型接口检查通过：
+  - UNet: `x, lq, timesteps -> output`
+  - Encoder: `image -> latent`
+  - Decoder: `latent -> image`
+- Encoder ONNX 前向执行成功：
+  - backend: `onnx-reference`
+  - output shape: `[1, 3, 64, 64]`
+- 报告文件已生成：`onnx_inference/outputs/validation_report.json`
+
+### 完整推理使用方式
+
+1) 先确保存在三个 ONNX：
+- `weights/resshift_model.onnx`
+- `onnx_inference/models/autoencoder_encoder.onnx`
+- `onnx_inference/models/autoencoder_decoder.onnx`
+
+2) 安装 `onnxruntime`（或 `onnxruntime-gpu`）后，执行：
+
+```bash
+/home/ubuntu/miniconda3/envs/ResShift/bin/python onnx_inference/run_onnx_pipeline.py \
+  --config configs/realsr_swinunet_realesrgan256.yaml \
+  --unet_onnx weights/resshift_model.onnx \
+  --encoder_onnx onnx_inference/models/autoencoder_encoder.onnx \
+  --decoder_onnx onnx_inference/models/autoencoder_decoder.onnx \
+  --input <LQ_IMAGE_PATH> \
+  --output <SR_OUTPUT_PATH>
+```
+
+3) 当前机器无 `onnxruntime` 时，可先做接口验证：
+
+```bash
+/home/ubuntu/miniconda3/envs/ResShift/bin/python onnx_inference/run_onnx_pipeline.py \
+  --config configs/realsr_swinunet_realesrgan256.yaml \
+  --unet_onnx weights/resshift_model.onnx \
+  --encoder_onnx onnx_inference/models/autoencoder_encoder.onnx \
+  --decoder_onnx onnx_inference/models/autoencoder_decoder.onnx \
+  --input onnx_inference/outputs/test_lq.png \
+  --output onnx_inference/outputs/test_sr.png \
+  --dry_run
+```
