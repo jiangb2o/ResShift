@@ -17,7 +17,7 @@ from datapipe.datasets import create_dataset
 
 from utils import util_net
 from utils import util_common
-from ResShift.utils import util_image
+from utils import util_image
 
 from basicsr.utils import DiffJPEG, USMSharp
 from basicsr.utils.img_process_util import filter2D

@@ -8,6 +8,7 @@ Error: mkl-service + Intel(R) MKL: MKL_THREADING_LAYER=INTEL is incompatible wit
 
 
 tmux new -s [name]
+tmux -a -t [name]
 tmux set -g mouse on
 
 # 
