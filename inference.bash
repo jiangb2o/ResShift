@@ -21,5 +21,8 @@ result_path="inference_result/imagenet_test_mymodel"
 
 
 # 单图推理
-LOCAL_RANK=0 python inference_resshift.py -i onnx_inference/outputs/shu.jpg \
+CUDA_VISIBLE_DEVICES=0 python inference_resshift.py -i onnx_inference/outputs/shu.jpg \
  -o onnx_inference/outputs/shu_sr --task realsr --scale 4 --version v1 --chop_size 64 --chop_stride 64 --bs 64
+
+# 单卡推理性能测试
+# CUDA_VISIBLE_DEVICES=0 python inference_resshift.py -i database/imagenet256_srx4/imagenet256/lq -o $result_path --task realsr --scale 4 --version v1 --chop_size 64 --chop_stride 64 --bs 64

@@ -2,7 +2,7 @@
 # -*- coding:utf-8 -*-
 # Power by Zongsheng Yue 2022-07-13 16:59:27
 
-import os, sys, math, random
+import os, sys, math, random, time
 
 import cv2
 import numpy as np
@@ -279,6 +279,7 @@ class ResShiftSampler(BaseSampler):
             dist.barrier()
 
         write_image = 0
+        elapsed_time = 0
         if in_path.is_dir():
             if mask_path is None:
                 data_config = {'type': 'base',
@@ -323,10 +324,12 @@ class ResShiftSampler(BaseSampler):
                 micro_data = {key:value[ind_start:ind_end] for key,value in data.items()}
 
                 if micro_data['lq'].shape[0] > 0:
+                    start_time = time.perf_counter()
                     results = _process_per_image(
                             micro_data['lq'].cuda(),
                             mask=micro_data['mask'].cuda() if 'mask' in micro_data else None,
                             )    # b x h x w x c, [0, 1], RGB
+                    end_time = time.perf_counter()
 
                     for jj in range(results.shape[0]):
                         im_sr = util_image.tensor2img(results[jj], rgb2bgr=True, min_max=(0.0, 1.0))
@@ -334,27 +337,35 @@ class ResShiftSampler(BaseSampler):
                         im_path = out_path / f"{im_name}.png"
                         util_image.imwrite(im_sr, im_path, chn='bgr', dtype_in='uint8')
                         write_image += 1
+
+                elapsed_time += (end_time - start_time)
             if self.num_gpus > 1:
                 dist.barrier()
         else:
+            write_image = 1
             im_lq = util_image.imread(in_path, chn='rgb', dtype='float32')  # h x w x c
             im_lq_tensor = util_image.img2tensor(im_lq).cuda()              # 1 x c x h x w
             if mask_path is not None:
                 im_mask = util_image.imread(mask_path, chn='gray', dtype='float32')[:,:, None]  # h x w x 1
                 im_mask_tensor = util_image.img2tensor(im_mask).cuda()              # 1 x c x h x w
 
+            start_time = time.perf_counter()
             im_sr_tensor = _process_per_image(
                     (im_lq_tensor - 0.5) / 0.5,
                     mask=(im_mask_tensor - 0.5) / 0.5 if mask_path is not None else None,
                     )
+            end_time = time.perf_counter()
+            elapsed_time = end_time - start_time
 
             im_sr = util_image.tensor2img(im_sr_tensor, rgb2bgr=True, min_max=(0.0, 1.0))
             im_path = out_path / f"{in_path.stem}.png"
             util_image.imwrite(im_sr, im_path, chn='bgr', dtype_in='uint8')
 
-        self.write_log(f"Processing done, enjoy the results in {str(out_path)}")
         self.write_log(f"Write Image num: {str(write_image)}")
+        if(not in_path.is_dir() or self.num_gpus == 1):
+            self.write_log(f"Inference time per image: {elapsed_time / write_image:.4f} s")
+
+        self.write_log(f"Processing done, enjoy the results in {str(out_path)}")
 
 if __name__ == '__main__':
     pass
-

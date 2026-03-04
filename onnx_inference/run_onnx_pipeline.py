@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import sys
+import time
 from pathlib import Path
 from typing import Dict, Tuple
 
@@ -31,7 +32,7 @@ class OnnxRunner:
         self.backend = "onnxruntime" if ort is not None else "onnx-reference"
         if ort is not None:
             self.session = ort.InferenceSession(
-                str(model_path), providers=["CPUExecutionProvider"]
+                str(model_path), providers=["CUDAExecutionProvider", "CPUExecutionProvider"]
             )
             self.input_names = [x.name for x in self.session.get_inputs()]
             self.output_name = self.session.get_outputs()[0].name
@@ -151,6 +152,8 @@ def main() -> None:
         f" dec_in={decoder.input_names}, dec_out={decoder.output_name}"
     )
 
+    begin_time = time.perf_counter()
+
     z_y = encoder.run({"image": y_up.numpy().astype(np.float32)})
     z_y = torch.from_numpy(z_y).float()
     scale_factor = float(cfg.diffusion.params.get("scale_factor", 1.0))
@@ -166,7 +169,7 @@ def main() -> None:
     if args.max_steps is not None:
         total_steps = min(total_steps, args.max_steps)
     indices = list(range(diffusion.num_timesteps))[::-1][:total_steps]
-    print(f"Sampling reverse steps: {len(indices)} (of total {diffusion.num_timesteps})")
+    # print(f"Sampling reverse steps: {len(indices)} (of total {diffusion.num_timesteps})")
 
     model_mean_type = diffusion.model_mean_type
     for i in indices:
@@ -229,6 +232,8 @@ def main() -> None:
         w0 = y0.shape[3] - pad_w
         sr_tensor = sr_tensor[:, :, : h0 * sf, : w0 * sf]
 
+    elapsed_time = time.perf_counter() - begin_time
+    print(f"Total inference time: {elapsed_time:.4f} s")
     output_path = (PROJECT_ROOT / args.output).resolve()
     cv2.imwrite(str(output_path), postprocess_image(sr_tensor))
     print(f"Saved SR result to: {output_path}")
