@@ -88,9 +88,12 @@ class BaseSampler:
         self.write_log(log_str)
         self.base_diffusion = util_common.instantiate_from_config(self.configs.diffusion)
         model = util_common.instantiate_from_config(self.configs.model).cuda()
-        ckpt_path =self.configs.model.ckpt_path
+        ckpt_path = self.configs.model.ckpt_path
+        if ckpt_path is None:
+            ckpt_path = self.configs.export.ckpt_path
         assert ckpt_path is not None
         self.write_log(f'Loading Diffusion model from {ckpt_path}...')
+        self.write_log(f'>>>use linfusion: {self.configs.model.params.use_linfusion}<<<')
         ckpt = torch.load(ckpt_path, map_location=f"cuda:{self.rank}")
         if 'state_dict' in ckpt:
             util_net.reload_model(model, ckpt['state_dict'])
@@ -209,7 +212,16 @@ class ResShiftSampler(BaseSampler):
 
         return results.clamp_(-1.0, 1.0)
 
-    def inference(self, in_path, out_path, mask_path=None, mask_back=True, bs=1, noise_repeat=False):
+    def inference(
+            self,
+            in_path,
+            out_path,
+            mask_path=None,
+            mask_back=True,
+            bs=1,
+            noise_repeat=False,
+            warmup_steps=10,
+            ):
         '''
         Inference demo.
         Input:
@@ -267,6 +279,15 @@ class ResShiftSampler(BaseSampler):
                 im_sr_tensor = im_sr_tensor * mask + im_lq_tensor * (1 - mask)
             return im_sr_tensor
 
+        def _run_warmup(im_lq_tensor, mask=None):
+            if warmup_steps <= 0:
+                return
+            self.write_log(f"Warmup inference for {warmup_steps} step(s)...")
+            with torch.no_grad():
+                for _ in range(warmup_steps):
+                    _process_per_image(im_lq_tensor, mask=mask)
+            self.write_log("Warmup done.")
+
         in_path = Path(in_path) if not isinstance(in_path, Path) else in_path
         out_path = Path(out_path) if not isinstance(out_path, Path) else out_path
 
@@ -311,6 +332,11 @@ class ResShiftSampler(BaseSampler):
                                }
             dataset = create_dataset(data_config)
             self.write_log(f'Find {len(dataset)} images in {in_path}')
+            if len(dataset) > 0:
+                warmup_data = dataset[0]
+                warmup_lq = warmup_data['lq'].unsqueeze(0).cuda()
+                warmup_mask = warmup_data['mask'].unsqueeze(0).cuda() if 'mask' in warmup_data else None
+                _run_warmup(warmup_lq, mask=warmup_mask)
             dataloader = torch.utils.data.DataLoader(
                     dataset,
                     batch_size=bs,
@@ -338,7 +364,7 @@ class ResShiftSampler(BaseSampler):
                         util_image.imwrite(im_sr, im_path, chn='bgr', dtype_in='uint8')
                         write_image += 1
 
-                elapsed_time += (end_time - start_time)
+                    elapsed_time += (end_time - start_time)
             if self.num_gpus > 1:
                 dist.barrier()
         else:
@@ -349,20 +375,17 @@ class ResShiftSampler(BaseSampler):
                 im_mask = util_image.imread(mask_path, chn='gray', dtype='float32')[:,:, None]  # h x w x 1
                 im_mask_tensor = util_image.img2tensor(im_mask).cuda()              # 1 x c x h x w
 
-            start_time = time.perf_counter()
             im_sr_tensor = _process_per_image(
                     (im_lq_tensor - 0.5) / 0.5,
                     mask=(im_mask_tensor - 0.5) / 0.5 if mask_path is not None else None,
                     )
-            end_time = time.perf_counter()
-            elapsed_time = end_time - start_time
 
             im_sr = util_image.tensor2img(im_sr_tensor, rgb2bgr=True, min_max=(0.0, 1.0))
             im_path = out_path / f"{in_path.stem}.png"
             util_image.imwrite(im_sr, im_path, chn='bgr', dtype_in='uint8')
 
         self.write_log(f"Write Image num: {str(write_image)}")
-        if(not in_path.is_dir() or self.num_gpus == 1):
+        if(in_path.is_dir() and self.num_gpus == 1):
             self.write_log(f"Inference time per image: {elapsed_time / write_image:.4f} s")
 
         self.write_log(f"Processing done, enjoy the results in {str(out_path)}")
