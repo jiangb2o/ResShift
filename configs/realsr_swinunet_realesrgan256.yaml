@@ -5,7 +5,7 @@ trainer:
 
 model:
   target: models.unet.UNetModelSwin
-  ckpt_path: weights/resshift_realsrx4_s15_v1_default.pth
+  ckpt_path: ~
   params:
     image_size: 64
     in_channels: 3
@@ -27,6 +27,8 @@ model:
     mlp_ratio: 4
     cond_lq: True
     lq_size: 64
+    use_linfusion: False
+    linfusion_eps: 1e-4
 
 diffusion:
   target: models.script_util.create_gaussian_diffusion
@@ -71,6 +73,7 @@ autoencoder:
 
 # Export settings
 export:
+  ckpt_path: weights/resshift_realsrx4_s15_v1_default.pth
   unet_output_path: onnx_inference/models/resshift_model.onnx    # Output ONNX file path
   encoder_output_path: onnx_inference/models/autoencoder_encoder.onnx
   decoder_output_path: onnx_inference/models/autoencoder_decoder.onnx
@@ -112,13 +115,14 @@ data:
     type: realesrgan
     params:
       dir_paths: [
-        '/home/ubuntu/ResShift/database/imagenet256_srx4/imagenet256/gt',
+        # '/home/ubuntu/ResShift/database/imagenet256_srx4/imagenet256/gt',
+        '/home/ubuntu/data/imgnet1k',
       ]
       txt_file_path: [
                       # '/mnt/sfs-common/zsyue/database/ImageNet/files_txt/path_train_all.txt', 
                       # '/mnt/sfs-common/zsyue/database/FFHQ/files_txt/files256.txt',
                      ] 
-      im_exts: ['png', ]
+      im_exts: ['png', 'JPEG']
       io_backend:
         type: disk
       blur_kernel_size: 21

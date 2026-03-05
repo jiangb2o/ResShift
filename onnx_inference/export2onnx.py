@@ -115,14 +115,14 @@ def resolve_project_path(path_str: str) -> Path:
 
 def export_unet(args, configs):
     # Verify checkpoint exists
-    ckpt_path = Path(configs.model.ckpt_path).expanduser()
+    ckpt_path = Path(configs.export.ckpt_path).expanduser()
     if not ckpt_path.is_absolute():
         ckpt_from_project = (PROJECT_ROOT / ckpt_path).resolve()
         ckpt_from_config = (PROJECT_ROOT / ckpt_path).resolve()
         ckpt_path = ckpt_from_project if ckpt_from_project.exists() else ckpt_from_config
     if not ckpt_path.exists():
         raise FileNotFoundError(f"Checkpoint not found: {ckpt_path}")
-    configs.model.ckpt_path = str(ckpt_path)
+    configs.export.ckpt_path = str(ckpt_path)
 
     output_path = Path(configs.export.unet_output_path).expanduser()
     if not output_path.is_absolute():
