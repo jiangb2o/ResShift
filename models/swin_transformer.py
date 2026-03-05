@@ -12,6 +12,9 @@ import torch.nn.functional as F
 import torch.utils.checkpoint as checkpoint
 from timm.models.layers import DropPath, to_2tuple, trunc_normal_
 
+#from einops import rearrange
+#from LinearAttention.flash_bla.fused import linear_attention
+
 from .basic_ops import normalization
 
 class Mlp(nn.Module):
@@ -140,6 +143,10 @@ class WindowAttention(nn.Module):
         z = q @ k.mean(dim=-2, keepdim=True).transpose(-2, -1) + self.linfusion_eps
         kv = (k.transpose(-2, -1) * (seq_len ** -0.5)) @ (v * (seq_len ** -0.5))
         return (q @ kv) / z
+    
+        #query, key, value = map(lambda x: rearrange(x, '(b h) l d -> b h l d', h=self.heads), [query, key, value])
+        #hidden_states = linear_attention(query, key, value, eps=1e-4)
+        #hidden_states = rearrange(hidden_states, 'b h l d -> (b h) l d')
 
     def forward(self, x, mask=None):
         """
@@ -151,6 +158,7 @@ class WindowAttention(nn.Module):
         qkv = self.qkv(x).reshape(B_, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4).contiguous()
         q, k, v = qkv[0], qkv[1], qkv[2]  # make torchscript happy (cannot use tensor as tuple), B_ x H x N x C
 
+        # linear attention
         if self.use_linfusion and mask is None:
             x = self._linear_attention(q, k, v).transpose(1, 2).contiguous().reshape(B_, N, C)
             x = self.proj(x)
@@ -299,10 +307,12 @@ class SwinTransformerBlock(nn.Module):
         # print(f"input_resolution: {self.input_resolution}, x_size: {x_size}")
         # print(f"input_resolution == x_size: {self.input_resolution == list(x_size)}")
         # exit(0)
-        if self.input_resolution == list(x_size):
-            attn_windows = self.attn(x_windows, mask=self.attn_mask.to(x.dtype) if self.attn_mask is not None else None )  # (NW*B) x (Ws*Ws) x C
-        else:
-            attn_windows = self.attn(x_windows, mask=self.calculate_mask(x_size).to(x.device, x.dtype))
+
+        # input_resolution is always equal with x_size
+        #if self.input_resolution[0] == x_size[0] and self.input_resolution[1] == x_size[1]:
+        attn_windows = self.attn(x_windows, mask=self.attn_mask.to(x.dtype) if self.attn_mask is not None else None )  # (NW*B) x (Ws*Ws) x C
+        #else:
+        #    attn_windows = self.attn(x_windows, mask=self.calculate_mask(x_size).to(x.device, x.dtype))
 
         # merge windows
         attn_windows = attn_windows.view(-1, self.window_size, self.window_size, C)

@@ -9,7 +9,7 @@ import torch.nn.functional as F
 import triton
 import triton.language as tl
 
-from flash_bla.utils import contiguous
+from utils import contiguous
 
 
 @triton.autotune(

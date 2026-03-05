@@ -17,7 +17,7 @@ import torch
 import torch.nn.functional as F
 from diffusers.models.attention_processor import Attention
 
-from flash_bla.ops.linear_attn.fused import linear_attention
+from ResShift.LinearAttention.flash_bla.fused import linear_attention
 from flash_bla.utils import assert_close
 
 from einops import rearrange
