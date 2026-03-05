@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import logging
 import sys
 import time
 from pathlib import Path
@@ -14,6 +15,24 @@ from omegaconf import OmegaConf
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
+
+
+class _Log:
+    def __init__(self, file_path: Path):
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        self._logger = logging.getLogger("onnx_inference")
+        self._logger.setLevel(logging.INFO)
+        self._logger.propagate = False
+        if not self._logger.handlers:
+            console_handler = logging.StreamHandler(sys.stdout)
+            self._logger.addHandler(console_handler)
+
+            file_handler = logging.FileHandler(file_path, encoding="utf-8")
+            self._logger.addHandler(file_handler)
+        self.print(f"\n\n====================Log initialized. Logging to: {file_path}====================")
+
+    def print(self, message: str) -> None:
+        self._logger.info(message)
 
 from models.gaussian_diffusion import ModelMeanType
 from models.script_util import create_gaussian_diffusion
@@ -79,6 +98,12 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Only run first N reverse steps for quick validation. Default: full steps.",
     )
+    parser.add_argument(
+        "--warmup_images",
+        type=int,
+        default=3,
+        help="Number of initial images used for warmup and excluded from timing stats.",
+    )
     return parser.parse_args()
 
 
@@ -124,6 +149,7 @@ def _scale_input(x: torch.Tensor, t_index: int, diffusion) -> torch.Tensor:
 
 def main() -> None:
     args = parse_args()
+    log = _Log((PROJECT_ROOT / "onnx_inference/log/inference_log.log").resolve())
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
 
@@ -134,6 +160,7 @@ def main() -> None:
         )
 
     cfg = OmegaConf.load((PROJECT_ROOT / args.config).resolve())
+    log.print(f">>>>>UNet ONNX path: {args.unet_onnx}<<<<<")
     # 构建与原生 ResShift 推理一致的扩散调度器对象。
     diffusion = create_gaussian_diffusion(**cfg.diffusion.params)
     # SpacedDiffusion 场景下，循环步索引可能需要映射到原训练时间步 id。
@@ -162,26 +189,23 @@ def main() -> None:
     encoder = OnnxRunner((PROJECT_ROOT / args.encoder_onnx).resolve())
     decoder = OnnxRunner((PROJECT_ROOT / args.decoder_onnx).resolve())
 
-    print(f"Backend: UNet={unet.backend}, Encoder={encoder.backend}, Decoder={decoder.backend}")
-    print(
+    log.print(f"Backend: UNet={unet.backend}, Encoder={encoder.backend}, Decoder={decoder.backend}")
+    log.print(
         "Model IO names:\n"
         f" unet_in={unet.input_names}, unet_out={unet.output_name};\n"
         f" enc_in={encoder.input_names}, enc_out={encoder.output_name};\n"
         f" dec_in={decoder.input_names}, dec_out={decoder.output_name}"
     )
     total_elapsed = 0.0
+    measured_images = 0
     total_images = len(image_paths)
     model_mean_type = diffusion.model_mean_type
+    warmup_images = max(0, int(args.warmup_images))
 
-    for idx, image_path in enumerate(image_paths, start=1):
-        y0_raw = preprocess_image(image_path)
+    def _run_pipeline_from_lq(y0_raw: torch.Tensor) -> torch.Tensor:
         h0, w0 = int(y0_raw.shape[2]), int(y0_raw.shape[3])
         y0, _, _ = _pad_to_multiple(y0_raw, int(cfg.model.params.get("lq_size", 64)))
         y_up = F.interpolate(y0, scale_factor=sf, mode="bicubic")
-        if idx == 1:
-            print(f"LQ shape: {tuple(y0.shape)}, upsampled shape: {tuple(y_up.shape)}")
-
-        begin_time = time.perf_counter()
 
         z_y = encoder.run({"image": y_up.numpy().astype(np.float32)})
         z_y = torch.from_numpy(z_y).float()
@@ -253,23 +277,46 @@ def main() -> None:
         z_out = z_t / max(scale_factor, 1e-8)
         sr = decoder.run({"latent": z_out.numpy().astype(np.float32)})
         sr_tensor = torch.from_numpy(sr).float().clamp(-1.0, 1.0)
-        sr_tensor = sr_tensor[:, :, : h0 * sf, : w0 * sf]
+        return sr_tensor[:, :, : h0 * sf, : w0 * sf]
 
+    # Warmup with synthetic tensor (same shape as first input), no save and no timing stats.
+    if warmup_images > 0:
+        first_shape = preprocess_image(image_paths[0]).shape
+        warmup_lq = torch.randn(first_shape, dtype=torch.float32)
+        log.print(f"Warmup enabled: {warmup_images} run(s) with synthetic input shape={tuple(first_shape)}")
+        for i in range(warmup_images):
+            _ = _run_pipeline_from_lq(warmup_lq)
+            log.print(f"[warmup {i+1}/{warmup_images}] done")
+
+    for idx, image_path in enumerate(image_paths, start=1):
+        y0_raw = preprocess_image(image_path)
+        if idx == 1:
+            y0_show, _, _ = _pad_to_multiple(y0_raw, int(cfg.model.params.get("lq_size", 64)))
+            y_up_show = F.interpolate(y0_show, scale_factor=sf, mode="bicubic")
+            log.print(f"LQ shape: {tuple(y0_show.shape)}, upsampled shape: {tuple(y_up_show.shape)}")
+
+        begin_time = time.perf_counter()
+        sr_tensor = _run_pipeline_from_lq(y0_raw)
         elapsed_time = time.perf_counter() - begin_time
         total_elapsed += elapsed_time
+        measured_images += 1
 
         if input_path.is_dir():
             current_output = output_path / f"{image_path.stem}.png"
         else:
             current_output = output_path
         cv2.imwrite(str(current_output), postprocess_image(sr_tensor))
-        print(f"[{idx}/{total_images}] {image_path.name} -> {current_output.name}, {elapsed_time:.4f} s")
+        log.print(
+            f"[{idx}/{total_images}] (measure) "
+            f"{image_path.name} -> {current_output.name}, {elapsed_time:.4f} s"
+        )
 
-    avg_time = total_elapsed / max(total_images, 1)
-    print(f"Processed {total_images} image(s)")
-    print(f"Total inference time: {total_elapsed:.4f} s")
-    print(f"Average inference time per image: {avg_time:.4f} s")
-    print(f"Saved SR result(s) to: {output_path}")
+    avg_time = total_elapsed / max(measured_images, 1)
+    log.print(f"Processed {total_images} image(s)")
+    log.print(f"Measured images (excluding warmup): {measured_images}")
+    log.print(f"Total measured inference time: {total_elapsed:.4f} s")
+    log.print(f"Average inference time per image: {avg_time:.4f} s")
+    log.print(f"Saved SR result(s) to: {output_path}")
 
 
 if __name__ == "__main__":
