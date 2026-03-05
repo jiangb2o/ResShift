@@ -60,8 +60,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--decoder_onnx", type=str, default="onnx_inference/models/autoencoder_decoder.onnx"
     )
-    parser.add_argument("--input", type=str, required=True, help="Input LQ image path.")
-    parser.add_argument("--output", type=str, required=True, help="Output SR image path.")
+    parser.add_argument("--input", type=str, required=True, help="Input LQ image path or folder.")
+    parser.add_argument(
+        "--output",
+        type=str,
+        required=True,
+        help="Output SR image path (single input) or output folder (folder input).",
+    )
     parser.add_argument("--seed", type=int, default=12345)
     parser.add_argument(
         "--allow_reference",
@@ -134,109 +139,137 @@ def main() -> None:
     # SpacedDiffusion 场景下，循环步索引可能需要映射到原训练时间步 id。
     timestep_map = getattr(diffusion, "timestep_map", None)
 
-    y0 = preprocess_image((PROJECT_ROOT / args.input).resolve())
-    y0, (pad_h, pad_w), padded = _pad_to_multiple(y0, int(cfg.model.params.get("lq_size", 64)))
+    input_path = (PROJECT_ROOT / args.input).resolve()
+    output_path = (PROJECT_ROOT / args.output).resolve()
+
+    if input_path.is_dir():
+        valid_exts = {".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff"}
+        image_paths = sorted(
+            [p for p in input_path.iterdir() if p.is_file() and p.suffix.lower() in valid_exts]
+        )
+        if len(image_paths) == 0:
+            raise FileNotFoundError(f"No images found in folder: {input_path}")
+        output_path.mkdir(parents=True, exist_ok=True)
+    else:
+        if not input_path.exists():
+            raise FileNotFoundError(f"Input image not found: {input_path}")
+        image_paths = [input_path]
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
     sf = int(cfg.diffusion.params.get("sf", 4))
-    y_up = F.interpolate(y0, scale_factor=sf, mode="bicubic")
 
     unet = OnnxRunner((PROJECT_ROOT / args.unet_onnx).resolve())
     encoder = OnnxRunner((PROJECT_ROOT / args.encoder_onnx).resolve())
     decoder = OnnxRunner((PROJECT_ROOT / args.decoder_onnx).resolve())
 
     print(f"Backend: UNet={unet.backend}, Encoder={encoder.backend}, Decoder={decoder.backend}")
-    print(f"LQ shape: {tuple(y0.shape)}, upsampled shape: {tuple(y_up.shape)}")
     print(
         "Model IO names:\n"
         f" unet_in={unet.input_names}, unet_out={unet.output_name};\n"
         f" enc_in={encoder.input_names}, enc_out={encoder.output_name};\n"
         f" dec_in={decoder.input_names}, dec_out={decoder.output_name}"
     )
-
-    begin_time = time.perf_counter()
-
-    z_y = encoder.run({"image": y_up.numpy().astype(np.float32)})
-    z_y = torch.from_numpy(z_y).float()
-    scale_factor = float(cfg.diffusion.params.get("scale_factor", 1.0))
-    # 与 encode_first_stage 对齐：编码后会对 latent 乘以 scale_factor。
-    z_y = z_y * scale_factor
-
-    # q(x_T | y)：从最后一步的先验分布初始化反向过程起点。
-    t_last = diffusion.num_timesteps - 1
-    init_noise = torch.randn_like(z_y)
-    z_t = z_y + float(diffusion.kappa * diffusion.sqrt_etas[t_last]) * init_noise
-
-    total_steps = diffusion.num_timesteps
-    if args.max_steps is not None:
-        total_steps = min(total_steps, args.max_steps)
-    indices = list(range(diffusion.num_timesteps))[::-1][:total_steps]
-    # print(f"Sampling reverse steps: {len(indices)} (of total {diffusion.num_timesteps})")
-
+    total_elapsed = 0.0
+    total_images = len(image_paths)
     model_mean_type = diffusion.model_mean_type
-    for i in indices:
-        # `i`：反向采样循环索引。
-        # `model_t`：实际喂给 UNet 的时间步（SpacedDiffusion 时会做映射）。
-        model_t = timestep_map[i] if timestep_map is not None else i
-        t_in = np.full((z_t.shape[0],), model_t, dtype=np.int64)
 
-        # UNet 输入 x 是当前 latent 状态 x_t，并做时刻相关归一化。
-        x_in = _scale_input(z_t, i, diffusion).numpy().astype(np.float32)
-        # UNet 条件输入 lq 是原始低质量图（等价于 sampler 里的 model_kwargs["lq"]）。
-        lq_in = y0.numpy().astype(np.float32)
+    for idx, image_path in enumerate(image_paths, start=1):
+        y0_raw = preprocess_image(image_path)
+        h0, w0 = int(y0_raw.shape[2]), int(y0_raw.shape[3])
+        y0, _, _ = _pad_to_multiple(y0_raw, int(cfg.model.params.get("lq_size", 64)))
+        y_up = F.interpolate(y0, scale_factor=sf, mode="bicubic")
+        if idx == 1:
+            print(f"LQ shape: {tuple(y0.shape)}, upsampled shape: {tuple(y_up.shape)}")
 
-        model_out = unet.run({"x": x_in, "lq": lq_in, "timesteps": t_in})
-        model_out = torch.from_numpy(model_out).float()
+        begin_time = time.perf_counter()
 
-        # `model_mean_type` 定义了 ResShift 训练时 UNet 的预测目标：
-        # START_X：直接预测 x_0
-        # RESIDUAL：预测 (y - x_0)
-        # EPSILON / EPSILON_SCALE：预测噪声形式，再解析还原 x_0
-        if model_mean_type == ModelMeanType.START_X:
-            pred_xstart = model_out
-        elif model_mean_type == ModelMeanType.RESIDUAL:
-            pred_xstart = z_y - model_out
-        elif model_mean_type == ModelMeanType.EPSILON:
-            pred_xstart = (
-                z_t
-                - float(diffusion.sqrt_etas[i] * diffusion.kappa) * model_out
-                - float(diffusion.etas[i]) * z_y
-            ) / float(1.0 - diffusion.etas[i])
-        elif model_mean_type == ModelMeanType.EPSILON_SCALE:
-            pred_xstart = (z_t - model_out - float(diffusion.etas[i]) * z_y) / float(
-                1.0 - diffusion.etas[i]
-            )
-        else:
-            raise NotImplementedError(f"Unsupported model_mean_type: {model_mean_type}")
+        z_y = encoder.run({"image": y_up.numpy().astype(np.float32)})
+        z_y = torch.from_numpy(z_y).float()
+        scale_factor = float(cfg.diffusion.params.get("scale_factor", 1.0))
+        # 与 encode_first_stage 对齐：编码后会对 latent 乘以 scale_factor。
+        z_y = z_y * scale_factor
 
-        # `coef1/coef2` 是 q(x_{t-1} | x_t, x_0) 的后验均值系数：
-        # mean = coef1 * x_t + coef2 * x_0_pred
-        coef1 = float(diffusion.posterior_mean_coef1[i])
-        coef2 = float(diffusion.posterior_mean_coef2[i])
-        mean = coef1 * z_t + coef2 * pred_xstart
+        # q(x_T | y)：从最后一步的先验分布初始化反向过程起点。
+        t_last = diffusion.num_timesteps - 1
+        init_noise = torch.randn_like(z_y)
+        z_t = z_y + float(diffusion.kappa * diffusion.sqrt_etas[t_last]) * init_noise
 
-        if i != 0:
-            noise = torch.randn_like(z_t)
-            # 第 i 步随机反向采样使用的后验 sigma。
-            sigma = float(np.exp(0.5 * diffusion.posterior_log_variance_clipped[i]))
-            z_t = mean + sigma * noise
-        else:
-            # 最后一步确定性更新（不再注入额外噪声）。
-            z_t = mean
+        total_steps = diffusion.num_timesteps
+        if args.max_steps is not None:
+            total_steps = min(total_steps, args.max_steps)
+        indices = list(range(diffusion.num_timesteps))[::-1][:total_steps]
 
-    # 与 decode_first_stage 对齐：进入 decoder 前先除以 scale_factor。
-    z_out = z_t / max(scale_factor, 1e-8)
-    sr = decoder.run({"latent": z_out.numpy().astype(np.float32)})
-    sr_tensor = torch.from_numpy(sr).float().clamp(-1.0, 1.0)
+        for i in indices:
+            # `i`：反向采样循环索引。
+            # `model_t`：实际喂给 UNet 的时间步（SpacedDiffusion 时会做映射）。
+            model_t = timestep_map[i] if timestep_map is not None else i
+            t_in = np.full((z_t.shape[0],), model_t, dtype=np.int64)
 
-    if padded:
-        h0 = y0.shape[2] - pad_h
-        w0 = y0.shape[3] - pad_w
+            # UNet 输入 x 是当前 latent 状态 x_t，并做时刻相关归一化。
+            x_in = _scale_input(z_t, i, diffusion).numpy().astype(np.float32)
+            # UNet 条件输入 lq 是原始低质量图（等价于 sampler 里的 model_kwargs["lq"]）。
+            lq_in = y0.numpy().astype(np.float32)
+
+            model_out = unet.run({"x": x_in, "lq": lq_in, "timesteps": t_in})
+            model_out = torch.from_numpy(model_out).float()
+
+            # `model_mean_type` 定义了 ResShift 训练时 UNet 的预测目标：
+            # START_X：直接预测 x_0
+            # RESIDUAL：预测 (y - x_0)
+            # EPSILON / EPSILON_SCALE：预测噪声形式，再解析还原 x_0
+            if model_mean_type == ModelMeanType.START_X:
+                pred_xstart = model_out
+            elif model_mean_type == ModelMeanType.RESIDUAL:
+                pred_xstart = z_y - model_out
+            elif model_mean_type == ModelMeanType.EPSILON:
+                pred_xstart = (
+                    z_t
+                    - float(diffusion.sqrt_etas[i] * diffusion.kappa) * model_out
+                    - float(diffusion.etas[i]) * z_y
+                ) / float(1.0 - diffusion.etas[i])
+            elif model_mean_type == ModelMeanType.EPSILON_SCALE:
+                pred_xstart = (z_t - model_out - float(diffusion.etas[i]) * z_y) / float(
+                    1.0 - diffusion.etas[i]
+                )
+            else:
+                raise NotImplementedError(f"Unsupported model_mean_type: {model_mean_type}")
+
+            # `coef1/coef2` 是 q(x_{t-1} | x_t, x_0) 的后验均值系数：
+            # mean = coef1 * x_t + coef2 * x_0_pred
+            coef1 = float(diffusion.posterior_mean_coef1[i])
+            coef2 = float(diffusion.posterior_mean_coef2[i])
+            mean = coef1 * z_t + coef2 * pred_xstart
+
+            if i != 0:
+                noise = torch.randn_like(z_t)
+                # 第 i 步随机反向采样使用的后验 sigma。
+                sigma = float(np.exp(0.5 * diffusion.posterior_log_variance_clipped[i]))
+                z_t = mean + sigma * noise
+            else:
+                # 最后一步确定性更新（不再注入额外噪声）。
+                z_t = mean
+
+        # 与 decode_first_stage 对齐：进入 decoder 前先除以 scale_factor。
+        z_out = z_t / max(scale_factor, 1e-8)
+        sr = decoder.run({"latent": z_out.numpy().astype(np.float32)})
+        sr_tensor = torch.from_numpy(sr).float().clamp(-1.0, 1.0)
         sr_tensor = sr_tensor[:, :, : h0 * sf, : w0 * sf]
 
-    elapsed_time = time.perf_counter() - begin_time
-    print(f"Total inference time: {elapsed_time:.4f} s")
-    output_path = (PROJECT_ROOT / args.output).resolve()
-    cv2.imwrite(str(output_path), postprocess_image(sr_tensor))
-    print(f"Saved SR result to: {output_path}")
+        elapsed_time = time.perf_counter() - begin_time
+        total_elapsed += elapsed_time
+
+        if input_path.is_dir():
+            current_output = output_path / f"{image_path.stem}.png"
+        else:
+            current_output = output_path
+        cv2.imwrite(str(current_output), postprocess_image(sr_tensor))
+        print(f"[{idx}/{total_images}] {image_path.name} -> {current_output.name}, {elapsed_time:.4f} s")
+
+    avg_time = total_elapsed / max(total_images, 1)
+    print(f"Processed {total_images} image(s)")
+    print(f"Total inference time: {total_elapsed:.4f} s")
+    print(f"Average inference time per image: {avg_time:.4f} s")
+    print(f"Saved SR result(s) to: {output_path}")
 
 
 if __name__ == "__main__":

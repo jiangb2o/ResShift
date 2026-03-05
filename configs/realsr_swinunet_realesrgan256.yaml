@@ -27,7 +27,7 @@ model:
     mlp_ratio: 4
     cond_lq: True
     lq_size: 64
-    use_linfusion: False
+    use_linfusion: True
     linfusion_eps: 1e-4
 
 diffusion:
@@ -74,9 +74,9 @@ autoencoder:
 # Export settings
 export:
   ckpt_path: weights/resshift_realsrx4_s15_v1_default.pth
-  unet_output_path: onnx_inference/models/resshift_model.onnx    # Output ONNX file path
-  encoder_output_path: onnx_inference/models/autoencoder_encoder.onnx
-  decoder_output_path: onnx_inference/models/autoencoder_decoder.onnx
+  unet_output_path: onnx_inference/models_linear_attn/resshift_model.onnx    # Output ONNX file path
+  encoder_output_path: onnx_inference/models_linear_attn/autoencoder_encoder.onnx
+  decoder_output_path: onnx_inference/models_linear_attn/autoencoder_decoder.onnx
   opset_version: 17                   # ONNX opset version
   input_name: input                   # Input tensor name
   output_name: output                 # Output tensor name
