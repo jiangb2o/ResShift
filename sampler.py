@@ -220,7 +220,7 @@ class ResShiftSampler(BaseSampler):
             mask_back=True,
             bs=1,
             noise_repeat=False,
-            warmup_steps=10,
+            warmup_steps=5,
             ):
         '''
         Inference demo.

@@ -79,7 +79,18 @@ class WindowAttention(nn.Module):
         proj_drop (float, optional): Dropout ratio of output. Default: 0.0
     """
 
-    def __init__(self, dim, window_size, num_heads, qkv_bias=True, qk_scale=None, attn_drop=0., proj_drop=0.):
+    def __init__(
+            self,
+            dim,
+            window_size,
+            num_heads,
+            qkv_bias=True,
+            qk_scale=None,
+            attn_drop=0.,
+            proj_drop=0.,
+            use_linfusion=False,
+            linfusion_eps=1e-4,
+            ):
 
         super().__init__()
         self.dim = dim
@@ -87,6 +98,8 @@ class WindowAttention(nn.Module):
         self.num_heads = num_heads
         head_dim = dim // num_heads
         self.scale = qk_scale or head_dim ** -0.5
+        self.use_linfusion = use_linfusion
+        self.linfusion_eps = linfusion_eps
 
         # define a parameter table of relative position bias
         self.relative_position_bias_table = nn.Parameter(
@@ -114,6 +127,20 @@ class WindowAttention(nn.Module):
         trunc_normal_(self.relative_position_bias_table, std=.02)
         self.softmax = nn.Softmax(dim=-1)
 
+    def _linear_attention(self, q, k, v):
+        """
+        LinFusion-style linear attention in torch mode.
+        q, k, v: B_ x num_heads x N x head_dim
+        """
+        seq_len = q.shape[-2]
+
+        q = F.elu(q) + 1.0
+        k = F.elu(k) + 1.0
+
+        z = q @ k.mean(dim=-2, keepdim=True).transpose(-2, -1) + self.linfusion_eps
+        kv = (k.transpose(-2, -1) * (seq_len ** -0.5)) @ (v * (seq_len ** -0.5))
+        return (q @ kv) / z
+
     def forward(self, x, mask=None):
         """
         Args:
@@ -123,6 +150,12 @@ class WindowAttention(nn.Module):
         B_, N, C = x.shape
         qkv = self.qkv(x).reshape(B_, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4).contiguous()
         q, k, v = qkv[0], qkv[1], qkv[2]  # make torchscript happy (cannot use tensor as tuple), B_ x H x N x C
+
+        if self.use_linfusion and mask is None:
+            x = self._linear_attention(q, k, v).transpose(1, 2).contiguous().reshape(B_, N, C)
+            x = self.proj(x)
+            x = self.proj_drop(x)
+            return x
 
         q = q * self.scale
         attn = (q @ k.transpose(-2, -1).contiguous())
@@ -183,7 +216,7 @@ class SwinTransformerBlock(nn.Module):
     """
     def __init__(self, dim, input_resolution, num_heads, window_size=7, shift_size=0,
                  mlp_ratio=4., qkv_bias=True, qk_scale=None, drop=0., attn_drop=0., drop_path=0.,
-                 act_layer=nn.GELU, norm_layer=normalization):
+                 act_layer=nn.GELU, norm_layer=normalization, use_linfusion=False, linfusion_eps=1e-4):
         super().__init__()
         self.dim = dim
         self.input_resolution = input_resolution
@@ -200,7 +233,8 @@ class SwinTransformerBlock(nn.Module):
         self.norm1 = norm_layer(dim)
         self.attn = WindowAttention(
             dim, window_size=to_2tuple(self.window_size), num_heads=num_heads,
-            qkv_bias=qkv_bias, qk_scale=qk_scale, attn_drop=attn_drop, proj_drop=drop)
+            qkv_bias=qkv_bias, qk_scale=qk_scale, attn_drop=attn_drop, proj_drop=drop,
+            use_linfusion=use_linfusion, linfusion_eps=linfusion_eps)
 
         self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
         self.norm2 = norm_layer(dim)
@@ -262,8 +296,11 @@ class SwinTransformerBlock(nn.Module):
         x_windows = x_windows.view(-1, self.window_size * self.window_size, C)  # (NW*B) x (Ws*Ws) x C
 
         # W-MSA/SW-MSA (to be compatible for testing on images whose shapes are the multiple of window size
-        if self.input_resolution == x_size:
-            attn_windows = self.attn(x_windows, mask=self.attn_mask.to(x.dtype))  # (NW*B) x (Ws*Ws) x C
+        # print(f"input_resolution: {self.input_resolution}, x_size: {x_size}")
+        # print(f"input_resolution == x_size: {self.input_resolution == list(x_size)}")
+        # exit(0)
+        if self.input_resolution == list(x_size):
+            attn_windows = self.attn(x_windows, mask=self.attn_mask.to(x.dtype) if self.attn_mask is not None else None )  # (NW*B) x (Ws*Ws) x C
         else:
             attn_windows = self.attn(x_windows, mask=self.calculate_mask(x_size).to(x.device, x.dtype))
 
@@ -386,6 +423,8 @@ class BasicLayer(nn.Module):
             norm_layer=normalization,
             use_checkpoint=False,
             patch_norm=True,
+            use_linfusion=False,
+            linfusion_eps=1e-4,
              ):
         super().__init__()
         self.embed_dim = embed_dim
@@ -424,6 +463,8 @@ class BasicLayer(nn.Module):
                         attn_drop=attn_drop,
                         drop_path=drop_path[i] if isinstance(drop_path, list) else drop_path,
                         norm_layer=norm_layer,
+                        use_linfusion=use_linfusion,
+                        linfusion_eps=linfusion_eps,
                                  )
             for i in range(depth)])
 

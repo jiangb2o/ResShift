@@ -1,4 +1,4 @@
-result_path="inference_result/runtime_test2"
+
 # result_path="inference_result/imagenet_test"
 
 # LOCAL_RANK=0 python inference_resshift.py -i database/imagenet256_srx4/imagenet256/lq -o $result_path --task realsr --scale 4 --version v1 --chop_size 64 --chop_stride 64 --bs 64
@@ -25,4 +25,10 @@ result_path="inference_result/runtime_test2"
 #  -o onnx_inference/outputs/shu_sr --task realsr --scale 4 --version v1 --chop_size 64 --chop_stride 64 --bs 64
 
 # 单卡推理性能测试
-CUDA_VISIBLE_DEVICES=3 python inference_resshift.py -i database/imagenet256_srx4/imagenet256/test_lq_10 -o $result_path --task realsr --scale 4 --version v1 --chop_size 64 --chop_stride 64 --bs 64
+result_path="inference_result/runtime_test"
+result_path2="inference_result/runtime_test2"
+
+CUDA_VISIBLE_DEVICES=6 python inference_resshift.py -i database/imagenet256_srx4/imagenet256/test_lq_50 -o $result_path \
+ --use_linfusion False --task realsr --scale 4 --version v1 --chop_size 64 --chop_stride 64 --bs 64
+CUDA_VISIBLE_DEVICES=6 python inference_resshift.py -i database/imagenet256_srx4/imagenet256/test_lq_50 -o $result_path2 \
+ --use_linfusion True --task realsr --scale 4 --version v1 --chop_size 64 --chop_stride 64 --bs 64

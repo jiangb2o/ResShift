@@ -660,6 +660,8 @@ class UNetModelSwin(nn.Module):
         cond_lq=True,
         cond_mask=False,
         lq_size=256,
+        use_linfusion=False,
+        linfusion_eps=1e-4,
     ):
         super().__init__()
 
@@ -746,6 +748,8 @@ class UNetModelSwin(nn.Module):
                                 use_checkpoint=False,
                                 norm_layer=normalization,
                                 patch_norm=patch_norm,
+                                use_linfusion=use_linfusion,
+                                linfusion_eps=linfusion_eps,
                                  )
                     )
                 self.input_blocks.append(TimestepEmbedSequential(*layers))
@@ -798,6 +802,8 @@ class UNetModelSwin(nn.Module):
                     use_checkpoint=False,
                     norm_layer=normalization,
                     patch_norm=patch_norm,
+                    use_linfusion=use_linfusion,
+                    linfusion_eps=linfusion_eps,
                      ),
             ResBlock(
                 ch,
@@ -842,6 +848,8 @@ class UNetModelSwin(nn.Module):
                                 use_checkpoint=False,
                                 norm_layer=normalization,
                                 patch_norm=patch_norm,
+                                use_linfusion=use_linfusion,
+                                linfusion_eps=linfusion_eps,
                                  )
                     )
                 if level and i == num_res_blocks[level]:

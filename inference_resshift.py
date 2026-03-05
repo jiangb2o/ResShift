@@ -72,6 +72,12 @@ def get_parser(**parser_kwargs):
             choices=['realsr', 'bicsr', 'inpaint_imagenet', 'inpaint_face', 'faceir', 'deblur'],
             help="Chopping forward.",
             )
+    parser.add_argument(
+            "--use_linfusion",
+            type=str2bool,
+            default=False,
+            help="Whether to use linfusion",
+            )
     args = parser.parse_args()
 
     return args
@@ -150,6 +156,7 @@ def get_configs(args):
     # 使用配置的check point
     # configs.model.ckpt_path = str(ckpt_path)
     configs.diffusion.params.sf = args.scale
+    configs.model.params.use_linfusion = args.use_linfusion
     configs.autoencoder.ckpt_path = str(vqgan_path)
 
     # save folder
