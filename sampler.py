@@ -14,6 +14,7 @@ from contextlib import nullcontext
 from utils import util_net
 from utils import util_image
 from utils import util_common
+from quantization.awq import is_awq_checkpoint_payload, load_awq_quantized_model_from_payload
 
 import torch
 import torch.nn.functional as F
@@ -95,7 +96,14 @@ class BaseSampler:
         self.write_log(f'Loading Diffusion model from {ckpt_path}...')
         self.write_log(f'>>>use linfusion: {self.configs.model.params.use_linfusion}<<<')
         ckpt = torch.load(ckpt_path, map_location=f"cuda:{self.rank}")
-        if 'state_dict' in ckpt:
+        if is_awq_checkpoint_payload(ckpt):
+            model, quantized_layers = load_awq_quantized_model_from_payload(
+                model,
+                ckpt,
+                device=torch.device(f"cuda:{self.rank}"),
+            )
+            self.write_log(f'Loaded AWQ checkpoint with {len(quantized_layers)} quantized linear layers.')
+        elif 'state_dict' in ckpt:
             util_net.reload_model(model, ckpt['state_dict'])
         else:
             util_net.reload_model(model, ckpt)

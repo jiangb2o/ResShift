@@ -78,6 +78,12 @@ def get_parser(**parser_kwargs):
             default=False,
             help="Whether to use linfusion",
             )
+    parser.add_argument(
+        "--checkpoint_path",
+        type=str,
+        default=""
+    )
+
     args = parser.parse_args()
 
     return args
@@ -156,6 +162,8 @@ def get_configs(args):
     # 使用配置的check point
     # configs.model.ckpt_path = str(ckpt_path)
     configs.diffusion.params.sf = args.scale
+    if(args.checkpoint_path != ""):
+        configs.export.ckpt_path = args.checkpoint_path
     configs.model.params.use_linfusion = args.use_linfusion
     configs.autoencoder.ckpt_path = str(vqgan_path)
 

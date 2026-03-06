@@ -7,3 +7,6 @@ weights/
 onnx_inference/models/
 onnx_inference/outputs/
 *.onnx
+quantization/calibration64/
+quantization/calibration128/
+*.pth
