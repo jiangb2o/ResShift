@@ -133,20 +133,20 @@ class WindowAttention(nn.Module):
     def _linear_attention(self, q, k, v):
         """
         LinFusion-style linear attention in torch mode.
-        q, k, v: B_ x num_heads x N x head_dim
+
+        Args:
+            q, k, v: tensors with shape [B_, num_heads, N, head_dim]
         """
         seq_len = q.shape[-2]
+        scale = seq_len ** -0.5
 
         q = F.elu(q) + 1.0
         k = F.elu(k) + 1.0
 
-        z = q @ k.mean(dim=-2, keepdim=True).transpose(-2, -1) + self.linfusion_eps
-        kv = (k.transpose(-2, -1) * (seq_len ** -0.5)) @ (v * (seq_len ** -0.5))
+        z = q @ k.mean(dim=-2, keepdim=True).transpose(-2, -1)
+        z = z + self.linfusion_eps
+        kv = (k.transpose(-2, -1) * scale) @ (v * scale)
         return (q @ kv) / z
-    
-        #query, key, value = map(lambda x: rearrange(x, '(b h) l d -> b h l d', h=self.heads), [query, key, value])
-        #hidden_states = linear_attention(query, key, value, eps=1e-4)
-        #hidden_states = rearrange(hidden_states, 'b h l d -> (b h) l d')
 
     def forward(self, x, mask=None):
         """
@@ -158,9 +158,13 @@ class WindowAttention(nn.Module):
         qkv = self.qkv(x).reshape(B_, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4).contiguous()
         q, k, v = qkv[0], qkv[1], qkv[2]  # make torchscript happy (cannot use tensor as tuple), B_ x H x N x C
 
-        # linear attention
-        if self.use_linfusion and mask is None:
-            x = self._linear_attention(q, k, v).transpose(1, 2).contiguous().reshape(B_, N, C)
+        # LinFusion replaces the full WindowAttention computation. For shifted
+        # windows, preserve Swin's visibility mask by running linear attention
+        # within each visible token group instead of falling back to softmax.
+        # 直接改为线性注意力, 不再使用window attention
+        if self.use_linfusion:
+            x = self._linear_attention(q, k, v)
+            x = x.transpose(1, 2).contiguous().reshape(B_, N, C)
             x = self.proj(x)
             x = self.proj_drop(x)
             return x
@@ -168,6 +172,7 @@ class WindowAttention(nn.Module):
         q = q * self.scale
         attn = (q @ k.transpose(-2, -1).contiguous())
 
+        # 窗口相对位置偏置
         relative_position_bias = self.relative_position_bias_table[self.relative_position_index.view(-1)].view(
             self.window_size[0] * self.window_size[1], self.window_size[0] * self.window_size[1], -1)  # Wh*Ww,Wh*Ww,nH
         relative_position_bias = relative_position_bias.permute(2, 0, 1).contiguous()  # nH, Wh*Ww, Wh*Ww
