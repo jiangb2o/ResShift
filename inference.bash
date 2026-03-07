@@ -30,12 +30,19 @@ result_path2="inference_result/runtime_test2"
 result_path3="inference_result/runtime_quant"
 
 # default
-CUDA_VISIBLE_DEVICES=4 python inference_resshift.py -i database/imagenet256_srx4/imagenet256/test_lq_10 -o $result_path \
-  --use_linfusion False --task realsr --scale 4 --version v1 --chop_size 64 --chop_stride 64 --bs 64
+# CUDA_VISIBLE_DEVICES=3 python inference_resshift.py -i database/imagenet256_srx4/imagenet256/test_lq_10 -o $result_path \
+#   --use_linfusion False --task realsr --scale 4 --version v1 --chop_size 64 --chop_stride 64 --bs 64 \
+#   --profile_inference True
+
+CUDA_VISIBLE_DEVICES=3 python inference_resshift.py -i database/imagenet256_srx4/imagenet256/test_lq_50 -o $result_path \
+  --use_linfusion False --task realsr --scale 4 --version v1 --chop_size 64 --chop_stride 64 --bs 24 \
+  --profile_inference True
 
 # linfusion
 #  CUDA_VISIBLE_DEVICES=4 python inference_resshift.py -i database/imagenet256_srx4/imagenet256/test_lq_10 -o $result_path2 \
 #   --use_linfusion True --task realsr --scale 4 --version v1 --chop_size 64 --chop_stride 64 --bs 64 
 # 量化
-CUDA_VISIBLE_DEVICES=4 python inference_resshift.py -i database/imagenet256_srx4/imagenet256/test_lq_10 -o $result_path3 \
- --use_linfusion False --task realsr --scale 4 --version v1 --chop_size 64 --chop_stride 64 --bs 64 --checkpoint_path quantization/artifacts/test_awq.pth
+# CUDA_VISIBLE_DEVICES=4 python inference_resshift.py -i database/imagenet256_srx4/imagenet256/test_lq_10 -o $result_path3 \
+#  --use_linfusion False --task realsr --scale 4 --version v1 --chop_size 64 --chop_stride 64 --bs 64 \
+#  --checkpoint_path quantization/artifacts/test_awq.pth \
+#  --profile_inference True

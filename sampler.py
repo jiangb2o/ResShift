@@ -3,6 +3,7 @@
 # Power by Zongsheng Yue 2022-07-13 16:59:27
 
 import os, sys, math, random, time
+from dataclasses import dataclass
 
 import cv2
 import numpy as np
@@ -24,6 +25,138 @@ import torch.multiprocessing as mp
 from datapipe.datasets import create_dataset
 from utils.util_image import ImageSpliterTh
 
+
+@dataclass
+class _TimerStat:
+    total_ms: float = 0.0
+    calls: int = 0
+
+    def add(self, elapsed_ms: float) -> None:
+        self.total_ms += elapsed_ms
+        self.calls += 1
+
+    @property
+    def avg_ms(self) -> float:
+        return self.total_ms / self.calls if self.calls else 0.0
+
+
+class _InferenceProfiler:
+    def __init__(self, enabled: bool) -> None:
+        self.enabled = enabled
+        self.global_stats = {
+            'unet': _TimerStat(),
+            'ae_encode': _TimerStat(),
+            'ae_decode': _TimerStat(),
+        }
+        self.current_stats = self._new_stats()
+        self.global_images = 0
+        self.current_images = 0
+
+    def _new_stats(self):
+        return {
+            'unet': _TimerStat(),
+            'ae_encode': _TimerStat(),
+            'ae_decode': _TimerStat(),
+        }
+
+    def begin_batch(self, batch_size: int) -> None:
+        if self.enabled:
+            self.current_stats = self._new_stats()
+            self.current_images = int(batch_size)
+
+    def reset_global(self) -> None:
+        if self.enabled:
+            self.global_stats = self._new_stats()
+            self.current_stats = self._new_stats()
+            self.global_images = 0
+            self.current_images = 0
+
+    def end_batch(self):
+        if not self.enabled:
+            return None, 0
+        snapshot = {
+            name: _TimerStat(total_ms=stat.total_ms, calls=stat.calls)
+            for name, stat in self.current_stats.items()
+        }
+        for name, stat in snapshot.items():
+            self.global_stats[name].total_ms += stat.total_ms
+            self.global_stats[name].calls += stat.calls
+        self.global_images += self.current_images
+        batch_images = self.current_images
+        self.current_stats = self._new_stats()
+        self.current_images = 0
+        return snapshot, batch_images
+
+    def timed(self, name: str, fn, *args, **kwargs):
+        if not self.enabled:
+            return fn(*args, **kwargs)
+
+        start = time.perf_counter()
+        out = fn(*args, **kwargs)
+
+        elapsed_ms = (time.perf_counter() - start) * 1000.0
+        self.current_stats[name].add(elapsed_ms)
+        return out
+
+    def summary_lines(self, stats, prefix: str, image_count: int):
+        if not self.enabled or stats is None:
+            return []
+        ordered = [
+            ('unet', 'UNet'),
+            ('ae_encode', 'AE.encode'),
+            ('ae_decode', 'AE.decode'),
+        ]
+        lines = []
+        total_ms = sum(stats[name].total_ms for name, _ in ordered)
+        denom = max(int(image_count), 1)
+        lines.append(f"{prefix}images={image_count}")
+        for key, label in ordered:
+            stat = stats[key]
+            lines.append(
+                f"{prefix}{label}: batch_total={stat.total_ms:.2f} ms, per_image={stat.total_ms / denom:.2f} ms, calls={stat.calls}, per_call={stat.avg_ms:.2f} ms"
+            )
+        lines.append(
+            f"{prefix}Profiled subtotal: batch_total={total_ms:.2f} ms, per_image={total_ms / denom:.2f} ms"
+        )
+        return lines
+
+
+class _ProfiledModule(torch.nn.Module):
+    def __init__(self, module: torch.nn.Module, profiler: _InferenceProfiler, name: str) -> None:
+        super().__init__()
+        self.module = module
+        self.profiler = profiler
+        self.name = name
+
+    def forward(self, *args, **kwargs):
+        return self.profiler.timed(self.name, self.module, *args, **kwargs)
+
+    def __getattr__(self, item):
+        if item in {"module", "profiler", "name"}:
+            return super().__getattr__(item)
+        return getattr(self.module, item)
+
+
+class _ProfiledAutoencoder(torch.nn.Module):
+    def __init__(self, module: torch.nn.Module, profiler: _InferenceProfiler) -> None:
+        super().__init__()
+        self.module = module
+        self.profiler = profiler
+
+    def encode(self, *args, **kwargs):
+        return self.profiler.timed('ae_encode', self.module.encode, *args, **kwargs)
+
+    def decode(self, *args, **kwargs):
+        return self.profiler.timed('ae_decode', self.module.decode, *args, **kwargs)
+
+    def forward(self, *args, **kwargs):
+        return self.module(*args, **kwargs)
+
+    def __getattr__(self, item):
+        if item in {"module", "profiler"}:
+            return super().__getattr__(item)
+        return getattr(self.module, item)
+
 class BaseSampler:
     def __init__(
             self,
@@ -35,6 +168,7 @@ class BaseSampler:
             chop_bs=1,
             padding_offset=16,
             seed=10000,
+            profile_inference=False,
             ):
         '''
         Input:
@@ -50,6 +184,10 @@ class BaseSampler:
         self.seed = seed
         self.use_amp = use_amp
         self.padding_offset = padding_offset
+        self.profile_inference = profile_inference
+        self.profiler = _InferenceProfiler(
+            enabled=profile_inference
+        )
 
         self.setup_dist()  # setup distributed training: self.num_gpus, self.rank
 
@@ -108,7 +246,8 @@ class BaseSampler:
         else:
             util_net.reload_model(model, ckpt)
         self.freeze_model(model)
-        self.model = model.eval()
+        model = model.eval()
+        self.model = _ProfiledModule(model, self.profiler, 'unet') if self.profile_inference else model
 
         # autoencoder model
         if self.configs.autoencoder.params.get("lora_tune_decoder", False):
@@ -136,7 +275,7 @@ class BaseSampler:
                 self.write_log(f'Loading AutoEncoder model from {ckpt_path}...')
                 self.load_model(autoencoder, ckpt_path)
             autoencoder.eval()
-            self.autoencoder = autoencoder
+            self.autoencoder = _ProfiledAutoencoder(autoencoder, self.profiler) if self.profile_inference else autoencoder
         else:
             self.autoencoder = None
 
@@ -238,7 +377,7 @@ class ResShiftSampler(BaseSampler):
             bs: int, default bs=1, bs % num_gpus == 0
             mask_path: image mask for inpainting
         '''
-        def _process_per_image(im_lq_tensor, mask=None):
+        def _process_per_image(im_lq_tensor, mask=None, warmup=False):
             '''
             Input:
                 im_lq_tensor: b x c x h x w, torch tensor, [-1, 1], RGB
@@ -247,6 +386,8 @@ class ResShiftSampler(BaseSampler):
                 im_sr: h x w x c, numpy array, [0,1], RGB
             '''
 
+            if not warmup:
+                self.profiler.begin_batch(im_lq_tensor.shape[0])
             context = torch.cuda.amp.autocast if self.use_amp else nullcontext
             if im_lq_tensor.shape[2] > self.chop_size or im_lq_tensor.shape[3] > self.chop_size:
                 if mask is not None:
@@ -272,7 +413,6 @@ class ResShiftSampler(BaseSampler):
                     im_spliter.update(im_sr_pch, index_infos)
                 im_sr_tensor = im_spliter.gather()
             else:
-                # print(im_lq_tensor.shape)
                 with context():
                     im_sr_tensor = self.sample_func(
                             im_lq_tensor,
@@ -285,6 +425,16 @@ class ResShiftSampler(BaseSampler):
                 mask = mask * 0.5 + 0.5
                 im_lq_tensor = im_lq_tensor * 0.5 + 0.5
                 im_sr_tensor = im_sr_tensor * mask + im_lq_tensor * (1 - mask)
+
+            if not warmup:
+                batch_profile, batch_images = self.profiler.end_batch()
+                if self.profile_inference:
+                    for line in self.profiler.summary_lines(
+                        batch_profile,
+                        prefix="Batch profile | ",
+                        image_count=batch_images,
+                    ):
+                        self.write_log(line)
             return im_sr_tensor
 
         def _run_warmup(im_lq_tensor, mask=None):
@@ -293,7 +443,8 @@ class ResShiftSampler(BaseSampler):
             self.write_log(f"Warmup inference for {warmup_steps} step(s)...")
             with torch.no_grad():
                 for _ in range(warmup_steps):
-                    _process_per_image(im_lq_tensor, mask=mask)
+                    _process_per_image(im_lq_tensor, mask=mask, warmup=True)
+            self.profiler.reset_global()
             self.write_log("Warmup done.")
 
         in_path = Path(in_path) if not isinstance(in_path, Path) else in_path
@@ -308,7 +459,6 @@ class ResShiftSampler(BaseSampler):
             dist.barrier()
 
         write_image = 0
-        elapsed_time = 0
         if in_path.is_dir():
             if mask_path is None:
                 data_config = {'type': 'base',
@@ -358,12 +508,10 @@ class ResShiftSampler(BaseSampler):
                 micro_data = {key:value[ind_start:ind_end] for key,value in data.items()}
 
                 if micro_data['lq'].shape[0] > 0:
-                    start_time = time.perf_counter()
                     results = _process_per_image(
                             micro_data['lq'].cuda(),
                             mask=micro_data['mask'].cuda() if 'mask' in micro_data else None,
                             )    # b x h x w x c, [0, 1], RGB
-                    end_time = time.perf_counter()
 
                     for jj in range(results.shape[0]):
                         im_sr = util_image.tensor2img(results[jj], rgb2bgr=True, min_max=(0.0, 1.0))
@@ -372,7 +520,6 @@ class ResShiftSampler(BaseSampler):
                         util_image.imwrite(im_sr, im_path, chn='bgr', dtype_in='uint8')
                         write_image += 1
 
-                    elapsed_time += (end_time - start_time)
             if self.num_gpus > 1:
                 dist.barrier()
         else:
@@ -393,8 +540,14 @@ class ResShiftSampler(BaseSampler):
             util_image.imwrite(im_sr, im_path, chn='bgr', dtype_in='uint8')
 
         self.write_log(f"Write Image num: {str(write_image)}")
-        if(in_path.is_dir() and self.num_gpus == 1):
-            self.write_log(f"Inference time per image: {elapsed_time / write_image:.4f} s")
+
+        if self.profile_inference:
+            for line in self.profiler.summary_lines(
+                self.profiler.global_stats,
+                prefix="Global profile | ",
+                image_count=self.profiler.global_images,
+            ):
+                self.write_log(line)
 
         self.write_log(f"Processing done, enjoy the results in {str(out_path)}")
 

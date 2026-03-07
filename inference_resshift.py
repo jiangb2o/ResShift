@@ -79,6 +79,12 @@ def get_parser(**parser_kwargs):
             help="Whether to use linfusion",
             )
     parser.add_argument(
+            "--profile_inference",
+            type=str2bool,
+            default=False,
+            help="Whether to profile UNet and autoencoder inference time",
+            )
+    parser.add_argument(
         "--checkpoint_path",
         type=str,
         default=""
@@ -206,6 +212,7 @@ def main():
             use_amp=True,
             seed=args.seed,
             padding_offset=configs.model.params.get('lq_size', 64),
+            profile_inference=args.profile_inference,
             )
 
     # setting mask path for inpainting
