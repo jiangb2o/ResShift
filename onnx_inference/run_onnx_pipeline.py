@@ -197,17 +197,23 @@ def main() -> None:
         f" dec_in={decoder.input_names}, dec_out={decoder.output_name}"
     )
     total_elapsed = 0.0
+    total_encoder_elapsed = 0.0
+    total_unet_elapsed = 0.0
+    total_decoder_elapsed = 0.0
+    total_unet_steps = 0
     measured_images = 0
     total_images = len(image_paths)
     model_mean_type = diffusion.model_mean_type
     warmup_images = max(0, int(args.warmup_images))
 
-    def _run_pipeline_from_lq(y0_raw: torch.Tensor) -> torch.Tensor:
+    def _run_pipeline_from_lq(y0_raw: torch.Tensor) -> Tuple[torch.Tensor, Dict[str, float]]:
         h0, w0 = int(y0_raw.shape[2]), int(y0_raw.shape[3])
         y0, _, _ = _pad_to_multiple(y0_raw, int(cfg.model.params.get("lq_size", 64)))
         y_up = F.interpolate(y0, scale_factor=sf, mode="bicubic")
 
+        encoder_begin = time.perf_counter()
         z_y = encoder.run({"image": y_up.numpy().astype(np.float32)})
+        encoder_elapsed = time.perf_counter() - encoder_begin
         z_y = torch.from_numpy(z_y).float()
         scale_factor = float(cfg.diffusion.params.get("scale_factor", 1.0))
         # 与 encode_first_stage 对齐：编码后会对 latent 乘以 scale_factor。
@@ -223,6 +229,7 @@ def main() -> None:
             total_steps = min(total_steps, args.max_steps)
         indices = list(range(diffusion.num_timesteps))[::-1][:total_steps]
 
+        unet_elapsed = 0.0
         for i in indices:
             # `i`：反向采样循环索引。
             # `model_t`：实际喂给 UNet 的时间步（SpacedDiffusion 时会做映射）。
@@ -234,7 +241,9 @@ def main() -> None:
             # UNet 条件输入 lq 是原始低质量图（等价于 sampler 里的 model_kwargs["lq"]）。
             lq_in = y0.numpy().astype(np.float32)
 
+            unet_begin = time.perf_counter()
             model_out = unet.run({"x": x_in, "lq": lq_in, "timesteps": t_in})
+            unet_elapsed += time.perf_counter() - unet_begin
             model_out = torch.from_numpy(model_out).float()
 
             # `model_mean_type` 定义了 ResShift 训练时 UNet 的预测目标：
@@ -275,9 +284,17 @@ def main() -> None:
 
         # 与 decode_first_stage 对齐：进入 decoder 前先除以 scale_factor。
         z_out = z_t / max(scale_factor, 1e-8)
+        decoder_begin = time.perf_counter()
         sr = decoder.run({"latent": z_out.numpy().astype(np.float32)})
+        decoder_elapsed = time.perf_counter() - decoder_begin
         sr_tensor = torch.from_numpy(sr).float().clamp(-1.0, 1.0)
-        return sr_tensor[:, :, : h0 * sf, : w0 * sf]
+        profile = {
+            "encoder": encoder_elapsed,
+            "unet": unet_elapsed,
+            "decoder": decoder_elapsed,
+            "unet_steps": len(indices),
+        }
+        return sr_tensor[:, :, : h0 * sf, : w0 * sf], profile
 
     # Warmup with synthetic tensor (same shape as first input), no save and no timing stats.
     if warmup_images > 0:
@@ -296,9 +313,13 @@ def main() -> None:
             log.print(f"LQ shape: {tuple(y0_show.shape)}, upsampled shape: {tuple(y_up_show.shape)}")
 
         begin_time = time.perf_counter()
-        sr_tensor = _run_pipeline_from_lq(y0_raw)
+        sr_tensor, profile = _run_pipeline_from_lq(y0_raw)
         elapsed_time = time.perf_counter() - begin_time
         total_elapsed += elapsed_time
+        total_encoder_elapsed += profile["encoder"]
+        total_unet_elapsed += profile["unet"]
+        total_decoder_elapsed += profile["decoder"]
+        total_unet_steps += int(profile["unet_steps"])
         measured_images += 1
 
         if input_path.is_dir():
@@ -306,16 +327,27 @@ def main() -> None:
         else:
             current_output = output_path
         cv2.imwrite(str(current_output), postprocess_image(sr_tensor))
-        log.print(
-            f"[{idx}/{total_images}] (measure) "
-            f"{image_path.name} -> {current_output.name}, {elapsed_time:.4f} s"
-        )
+        if (idx % 10 == 0):
+            log.print(
+                f"[{idx}/{total_images}] (measure) "
+                f"{image_path.name} -> {current_output.name}, total={elapsed_time:.4f} s, "
+                f"encoder={profile['encoder']:.4f} s, unet={profile['unet']:.4f} s, "
+                f"decoder={profile['decoder']:.4f} s, unet_steps={int(profile['unet_steps'])}"
+            )
 
     avg_time = total_elapsed / max(measured_images, 1)
+    avg_encoder_time = total_encoder_elapsed / max(measured_images, 1)
+    avg_unet_time = total_unet_elapsed / max(measured_images, 1)
+    avg_decoder_time = total_decoder_elapsed / max(measured_images, 1)
+    avg_unet_step_time = total_unet_elapsed / max(total_unet_steps, 1)
     log.print(f"Processed {total_images} image(s)")
     log.print(f"Measured images (excluding warmup): {measured_images}")
     log.print(f"Total measured inference time: {total_elapsed:.4f} s")
     log.print(f"Average inference time per image: {avg_time:.4f} s")
+    log.print(f"Average encoder time per image: {avg_encoder_time:.4f} s")
+    log.print(f"Average UNet time per image: {avg_unet_time:.4f} s")
+    log.print(f"Average decoder time per image: {avg_decoder_time:.4f} s")
+    log.print(f"Average UNet time per step: {avg_unet_step_time:.6f} s")
     log.print(f"Saved SR result(s) to: {output_path}")
 
 

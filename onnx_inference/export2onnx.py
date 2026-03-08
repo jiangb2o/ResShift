@@ -215,6 +215,7 @@ def export_unet(args, configs):
     output_file = Path(configs.export.unet_output_path)
     file_size = output_file.stat().st_size / (1024**2)  # Convert to MB
     print(f"\n✓ UNet Model exported successfully!")
+    print(f"use linfusion: {configs.model.params.use_linfusion}")
     print(f"  Output file: {configs.export.unet_output_path}")
     print(f"\nInputs:")
     print(f"  - x: Latent representation [batch, 3, {H}, {W}]")

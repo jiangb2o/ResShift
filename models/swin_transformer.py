@@ -103,6 +103,10 @@ class WindowAttention(nn.Module):
         self.scale = qk_scale or head_dim ** -0.5
         self.use_linfusion = use_linfusion
         self.linfusion_eps = linfusion_eps
+        # WindowAttention always operates on a fixed window token count, so keep
+        # the linear-attention normalization scale constant to avoid exporting
+        # dynamic Shape/Gather/Pow subgraphs to ONNX.
+        self.linfusion_seq_scale = float((window_size[0] * window_size[1]) ** -0.5)
 
         # define a parameter table of relative position bias
         self.relative_position_bias_table = nn.Parameter(
@@ -137,14 +141,12 @@ class WindowAttention(nn.Module):
         Args:
             q, k, v: tensors with shape [B_, num_heads, N, head_dim]
         """
-        seq_len = q.shape[-2]
-        scale = seq_len ** -0.5
+        scale = self.linfusion_seq_scale
 
         q = F.elu(q) + 1.0
         k = F.elu(k) + 1.0
 
-        z = q @ k.mean(dim=-2, keepdim=True).transpose(-2, -1)
-        z = z + self.linfusion_eps
+        z = q @ k.mean(dim=-2, keepdim=True).transpose(-2, -1) + self.linfusion_eps
         kv = (k.transpose(-2, -1) * scale) @ (v * scale)
         return (q @ kv) / z
 
@@ -163,8 +165,7 @@ class WindowAttention(nn.Module):
         # within each visible token group instead of falling back to softmax.
         # 直接改为线性注意力, 不再使用window attention
         if self.use_linfusion:
-            x = self._linear_attention(q, k, v)
-            x = x.transpose(1, 2).contiguous().reshape(B_, N, C)
+            x = self._linear_attention(q, k, v).transpose(1, 2).contiguous().reshape(B_, N, C)
             x = self.proj(x)
             x = self.proj_drop(x)
             return x

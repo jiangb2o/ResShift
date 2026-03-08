@@ -12,20 +12,114 @@ Warmup enabled: 3 run(s) with synthetic input shape=(1, 3, 64, 64)
 [warmup 2/3] done
 [warmup 3/3] done
 LQ shape: (1, 3, 64, 64), upsampled shape: (1, 3, 256, 256)
-[1/10] (measure) ILSVRC2012_val_00000067.png -> ILSVRC2012_val_00000067.png, 0.5399 s
-[2/10] (measure) ILSVRC2012_val_00000073.png -> ILSVRC2012_val_00000073.png, 0.5708 s
-[3/10] (measure) ILSVRC2012_val_00000079.png -> ILSVRC2012_val_00000079.png, 0.5059 s
-[4/10] (measure) ILSVRC2012_val_00000084.png -> ILSVRC2012_val_00000084.png, 0.5387 s
-[5/10] (measure) ILSVRC2012_val_00000104.png -> ILSVRC2012_val_00000104.png, 0.3849 s
-[6/10] (measure) ILSVRC2012_val_00000105.png -> ILSVRC2012_val_00000105.png, 0.4650 s
-[7/10] (measure) ILSVRC2012_val_00000134.png -> ILSVRC2012_val_00000134.png, 0.4987 s
-[8/10] (measure) ILSVRC2012_val_00000151.png -> ILSVRC2012_val_00000151.png, 0.5066 s
-[9/10] (measure) ILSVRC2012_val_00000153.png -> ILSVRC2012_val_00000153.png, 0.3471 s
-[10/10] (measure) ILSVRC2012_val_00000164.png -> ILSVRC2012_val_00000164.png, 0.5163 s
-Processed 10 image(s)
-Measured images (excluding warmup): 10
-Total measured inference time: 4.8739 s
-Average inference time per image: 0.4874 s
+[1/100] (measure) ILSVRC2012_val_00000067.png -> ILSVRC2012_val_00000067.png, total=0.1456 s, encoder=0.0070 s, unet=0.1193 s, decoder=0.0157 s, unet_steps=15
+[2/100] (measure) ILSVRC2012_val_00000073.png -> ILSVRC2012_val_00000073.png, total=0.1837 s, encoder=0.0070 s, unet=0.1568 s, decoder=0.0156 s, unet_steps=15
+[3/100] (measure) ILSVRC2012_val_00000079.png -> ILSVRC2012_val_00000079.png, total=0.1845 s, encoder=0.0067 s, unet=0.1574 s, decoder=0.0160 s, unet_steps=15
+[4/100] (measure) ILSVRC2012_val_00000084.png -> ILSVRC2012_val_00000084.png, total=0.1947 s, encoder=0.0071 s, unet=0.1556 s, decoder=0.0161 s, unet_steps=15
+[5/100] (measure) ILSVRC2012_val_00000104.png -> ILSVRC2012_val_00000104.png, total=0.1826 s, encoder=0.0070 s, unet=0.1513 s, decoder=0.0160 s, unet_steps=15
+[6/100] (measure) ILSVRC2012_val_00000105.png -> ILSVRC2012_val_00000105.png, total=0.1886 s, encoder=0.0070 s, unet=0.1601 s, decoder=0.0160 s, unet_steps=15
+[7/100] (measure) ILSVRC2012_val_00000134.png -> ILSVRC2012_val_00000134.png, total=0.1869 s, encoder=0.0070 s, unet=0.1594 s, decoder=0.0159 s, unet_steps=15
+[8/100] (measure) ILSVRC2012_val_00000151.png -> ILSVRC2012_val_00000151.png, total=0.1867 s, encoder=0.0070 s, unet=0.1590 s, decoder=0.0159 s, unet_steps=15
+[9/100] (measure) ILSVRC2012_val_00000153.png -> ILSVRC2012_val_00000153.png, total=0.1868 s, encoder=0.0070 s, unet=0.1594 s, decoder=0.0159 s, unet_steps=15
+[10/100] (measure) ILSVRC2012_val_00000164.png -> ILSVRC2012_val_00000164.png, total=0.2132 s, encoder=0.0070 s, unet=0.1830 s, decoder=0.0165 s, unet_steps=15
+[11/100] (measure) ILSVRC2012_val_00000180.png -> ILSVRC2012_val_00000180.png, total=0.1790 s, encoder=0.0076 s, unet=0.1487 s, decoder=0.0164 s, unet_steps=15
+[12/100] (measure) ILSVRC2012_val_00000183.png -> ILSVRC2012_val_00000183.png, total=0.1545 s, encoder=0.0068 s, unet=0.1261 s, decoder=0.0166 s, unet_steps=15
+[13/100] (measure) ILSVRC2012_val_00000185.png -> ILSVRC2012_val_00000185.png, total=0.1763 s, encoder=0.0076 s, unet=0.1466 s, decoder=0.0164 s, unet_steps=15
+[14/100] (measure) ILSVRC2012_val_00000191.png -> ILSVRC2012_val_00000191.png, total=0.1566 s, encoder=0.0075 s, unet=0.1279 s, decoder=0.0163 s, unet_steps=15
+[15/100] (measure) ILSVRC2012_val_00000204.png -> ILSVRC2012_val_00000204.png, total=0.1684 s, encoder=0.0084 s, unet=0.1384 s, decoder=0.0158 s, unet_steps=15
+[16/100] (measure) ILSVRC2012_val_00000218.png -> ILSVRC2012_val_00000218.png, total=0.1551 s, encoder=0.0068 s, unet=0.1272 s, decoder=0.0164 s, unet_steps=15
+[17/100] (measure) ILSVRC2012_val_00000219.png -> ILSVRC2012_val_00000219.png, total=0.1596 s, encoder=0.0074 s, unet=0.1283 s, decoder=0.0164 s, unet_steps=15
+[18/100] (measure) ILSVRC2012_val_00000232.png -> ILSVRC2012_val_00000232.png, total=0.1749 s, encoder=0.0074 s, unet=0.1452 s, decoder=0.0164 s, unet_steps=15
+[19/100] (measure) ILSVRC2012_val_00000235.png -> ILSVRC2012_val_00000235.png, total=0.1563 s, encoder=0.0074 s, unet=0.1277 s, decoder=0.0163 s, unet_steps=15
+[20/100] (measure) ILSVRC2012_val_00000244.png -> ILSVRC2012_val_00000244.png, total=0.1562 s, encoder=0.0074 s, unet=0.1274 s, decoder=0.0163 s, unet_steps=15
+[21/100] (measure) ILSVRC2012_val_00000246.png -> ILSVRC2012_val_00000246.png, total=0.1864 s, encoder=0.0074 s, unet=0.1411 s, decoder=0.0290 s, unet_steps=15
+[22/100] (measure) ILSVRC2012_val_00000251.png -> ILSVRC2012_val_00000251.png, total=0.1806 s, encoder=0.0075 s, unet=0.1453 s, decoder=0.0163 s, unet_steps=15
+[23/100] (measure) ILSVRC2012_val_00000253.png -> ILSVRC2012_val_00000253.png, total=0.2018 s, encoder=0.0075 s, unet=0.1686 s, decoder=0.0159 s, unet_steps=15
+[24/100] (measure) ILSVRC2012_val_00000258.png -> ILSVRC2012_val_00000258.png, total=0.1599 s, encoder=0.0069 s, unet=0.1328 s, decoder=0.0158 s, unet_steps=15
+[25/100] (measure) ILSVRC2012_val_00000277.png -> ILSVRC2012_val_00000277.png, total=0.1821 s, encoder=0.0068 s, unet=0.1531 s, decoder=0.0166 s, unet_steps=15
+[26/100] (measure) ILSVRC2012_val_00000293.png -> ILSVRC2012_val_00000293.png, total=0.1568 s, encoder=0.0075 s, unet=0.1279 s, decoder=0.0164 s, unet_steps=15
+[27/100] (measure) ILSVRC2012_val_00000343.png -> ILSVRC2012_val_00000343.png, total=0.1702 s, encoder=0.0074 s, unet=0.1322 s, decoder=0.0164 s, unet_steps=15
+[28/100] (measure) ILSVRC2012_val_00000364.png -> ILSVRC2012_val_00000364.png, total=0.1567 s, encoder=0.0074 s, unet=0.1280 s, decoder=0.0166 s, unet_steps=15
+[29/100] (measure) ILSVRC2012_val_00000382.png -> ILSVRC2012_val_00000382.png, total=0.1708 s, encoder=0.0074 s, unet=0.1418 s, decoder=0.0162 s, unet_steps=15
+[30/100] (measure) ILSVRC2012_val_00000411.png -> ILSVRC2012_val_00000411.png, total=0.1659 s, encoder=0.0069 s, unet=0.1376 s, decoder=0.0165 s, unet_steps=15
+[31/100] (measure) ILSVRC2012_val_00000415.png -> ILSVRC2012_val_00000415.png, total=0.1595 s, encoder=0.0074 s, unet=0.1285 s, decoder=0.0165 s, unet_steps=15
+[32/100] (measure) ILSVRC2012_val_00000437.png -> ILSVRC2012_val_00000437.png, total=0.1844 s, encoder=0.0074 s, unet=0.1547 s, decoder=0.0172 s, unet_steps=15
+[33/100] (measure) ILSVRC2012_val_00000442.png -> ILSVRC2012_val_00000442.png, total=0.2231 s, encoder=0.0075 s, unet=0.1924 s, decoder=0.0165 s, unet_steps=15
+[34/100] (measure) ILSVRC2012_val_00000446.png -> ILSVRC2012_val_00000446.png, total=0.1895 s, encoder=0.0075 s, unet=0.1602 s, decoder=0.0164 s, unet_steps=15
+[35/100] (measure) ILSVRC2012_val_00000470.png -> ILSVRC2012_val_00000470.png, total=0.1563 s, encoder=0.0074 s, unet=0.1285 s, decoder=0.0159 s, unet_steps=15
+[36/100] (measure) ILSVRC2012_val_00000518.png -> ILSVRC2012_val_00000518.png, total=0.1450 s, encoder=0.0068 s, unet=0.1182 s, decoder=0.0157 s, unet_steps=15
+[37/100] (measure) ILSVRC2012_val_00000565.png -> ILSVRC2012_val_00000565.png, total=0.1906 s, encoder=0.0068 s, unet=0.1411 s, decoder=0.0164 s, unet_steps=15
+[38/100] (measure) ILSVRC2012_val_00000578.png -> ILSVRC2012_val_00000578.png, total=0.2031 s, encoder=0.0074 s, unet=0.1739 s, decoder=0.0164 s, unet_steps=15
+[39/100] (measure) ILSVRC2012_val_00000581.png -> ILSVRC2012_val_00000581.png, total=0.2261 s, encoder=0.0074 s, unet=0.1968 s, decoder=0.0165 s, unet_steps=15
+[40/100] (measure) ILSVRC2012_val_00000601.png -> ILSVRC2012_val_00000601.png, total=0.2257 s, encoder=0.0074 s, unet=0.1964 s, decoder=0.0165 s, unet_steps=15
+[41/100] (measure) ILSVRC2012_val_00000610.png -> ILSVRC2012_val_00000610.png, total=0.2031 s, encoder=0.0075 s, unet=0.1721 s, decoder=0.0171 s, unet_steps=15
+[42/100] (measure) ILSVRC2012_val_00000629.png -> ILSVRC2012_val_00000629.png, total=0.1885 s, encoder=0.0079 s, unet=0.1473 s, decoder=0.0159 s, unet_steps=15
+[43/100] (measure) ILSVRC2012_val_00000655.png -> ILSVRC2012_val_00000655.png, total=0.1434 s, encoder=0.0068 s, unet=0.1169 s, decoder=0.0157 s, unet_steps=15
+[44/100] (measure) ILSVRC2012_val_00000668.png -> ILSVRC2012_val_00000668.png, total=0.1489 s, encoder=0.0068 s, unet=0.1217 s, decoder=0.0164 s, unet_steps=15
+[45/100] (measure) ILSVRC2012_val_00000676.png -> ILSVRC2012_val_00000676.png, total=0.1548 s, encoder=0.0073 s, unet=0.1207 s, decoder=0.0168 s, unet_steps=15
+[46/100] (measure) ILSVRC2012_val_00000698.png -> ILSVRC2012_val_00000698.png, total=0.1756 s, encoder=0.0075 s, unet=0.1281 s, decoder=0.0165 s, unet_steps=15
+[47/100] (measure) ILSVRC2012_val_00000711.png -> ILSVRC2012_val_00000711.png, total=0.1540 s, encoder=0.0074 s, unet=0.1259 s, decoder=0.0157 s, unet_steps=15
+[48/100] (measure) ILSVRC2012_val_00000718.png -> ILSVRC2012_val_00000718.png, total=0.1506 s, encoder=0.0068 s, unet=0.1229 s, decoder=0.0157 s, unet_steps=15
+[49/100] (measure) ILSVRC2012_val_00000801.png -> ILSVRC2012_val_00000801.png, total=0.1540 s, encoder=0.0068 s, unet=0.1232 s, decoder=0.0165 s, unet_steps=15
+[50/100] (measure) ILSVRC2012_val_00000835.png -> ILSVRC2012_val_00000835.png, total=0.1623 s, encoder=0.0074 s, unet=0.1283 s, decoder=0.0164 s, unet_steps=15
+[51/100] (measure) ILSVRC2012_val_00000859.png -> ILSVRC2012_val_00000859.png, total=0.1785 s, encoder=0.0074 s, unet=0.1412 s, decoder=0.0165 s, unet_steps=15
+[52/100] (measure) ILSVRC2012_val_00000881.png -> ILSVRC2012_val_00000881.png, total=0.2148 s, encoder=0.0074 s, unet=0.1813 s, decoder=0.0179 s, unet_steps=15
+[53/100] (measure) ILSVRC2012_val_00000898.png -> ILSVRC2012_val_00000898.png, total=0.1489 s, encoder=0.0086 s, unet=0.1189 s, decoder=0.0164 s, unet_steps=15
+[54/100] (measure) ILSVRC2012_val_00000947.png -> ILSVRC2012_val_00000947.png, total=0.1566 s, encoder=0.0073 s, unet=0.1286 s, decoder=0.0164 s, unet_steps=15
+[55/100] (measure) ILSVRC2012_val_00000956.png -> ILSVRC2012_val_00000956.png, total=0.1598 s, encoder=0.0074 s, unet=0.1312 s, decoder=0.0165 s, unet_steps=15
+[56/100] (measure) ILSVRC2012_val_00000965.png -> ILSVRC2012_val_00000965.png, total=0.1475 s, encoder=0.0075 s, unet=0.1185 s, decoder=0.0164 s, unet_steps=15
+[57/100] (measure) ILSVRC2012_val_00000986.png -> ILSVRC2012_val_00000986.png, total=0.1577 s, encoder=0.0073 s, unet=0.1280 s, decoder=0.0164 s, unet_steps=15
+[58/100] (measure) ILSVRC2012_val_00000988.png -> ILSVRC2012_val_00000988.png, total=0.1584 s, encoder=0.0073 s, unet=0.1298 s, decoder=0.0166 s, unet_steps=15
+[59/100] (measure) ILSVRC2012_val_00000993.png -> ILSVRC2012_val_00000993.png, total=0.1608 s, encoder=0.0075 s, unet=0.1324 s, decoder=0.0166 s, unet_steps=15
+[60/100] (measure) ILSVRC2012_val_00001006.png -> ILSVRC2012_val_00001006.png, total=0.1690 s, encoder=0.0075 s, unet=0.1414 s, decoder=0.0158 s, unet_steps=15
+[61/100] (measure) ILSVRC2012_val_00001016.png -> ILSVRC2012_val_00001016.png, total=0.1956 s, encoder=0.0068 s, unet=0.1686 s, decoder=0.0158 s, unet_steps=15
+[62/100] (measure) ILSVRC2012_val_00001043.png -> ILSVRC2012_val_00001043.png, total=0.1985 s, encoder=0.0068 s, unet=0.1703 s, decoder=0.0166 s, unet_steps=15
+[63/100] (measure) ILSVRC2012_val_00001045.png -> ILSVRC2012_val_00001045.png, total=0.1758 s, encoder=0.0076 s, unet=0.1372 s, decoder=0.0157 s, unet_steps=15
+[64/100] (measure) ILSVRC2012_val_00001057.png -> ILSVRC2012_val_00001057.png, total=0.1567 s, encoder=0.0068 s, unet=0.1215 s, decoder=0.0166 s, unet_steps=15
+[65/100] (measure) ILSVRC2012_val_00001076.png -> ILSVRC2012_val_00001076.png, total=0.1684 s, encoder=0.0073 s, unet=0.1396 s, decoder=0.0163 s, unet_steps=15
+[66/100] (measure) ILSVRC2012_val_00001080.png -> ILSVRC2012_val_00001080.png, total=0.2035 s, encoder=0.0078 s, unet=0.1745 s, decoder=0.0162 s, unet_steps=15
+[67/100] (measure) ILSVRC2012_val_00001090.png -> ILSVRC2012_val_00001090.png, total=0.2192 s, encoder=0.0077 s, unet=0.1884 s, decoder=0.0163 s, unet_steps=15
+[68/100] (measure) ILSVRC2012_val_00001104.png -> ILSVRC2012_val_00001104.png, total=0.1713 s, encoder=0.0074 s, unet=0.1425 s, decoder=0.0162 s, unet_steps=15
+[69/100] (measure) ILSVRC2012_val_00001129.png -> ILSVRC2012_val_00001129.png, total=0.1552 s, encoder=0.0074 s, unet=0.1270 s, decoder=0.0161 s, unet_steps=15
+[70/100] (measure) ILSVRC2012_val_00001202.png -> ILSVRC2012_val_00001202.png, total=0.1615 s, encoder=0.0075 s, unet=0.1326 s, decoder=0.0162 s, unet_steps=15
+[71/100] (measure) ILSVRC2012_val_00001213.png -> ILSVRC2012_val_00001213.png, total=0.1644 s, encoder=0.0075 s, unet=0.1350 s, decoder=0.0163 s, unet_steps=15
+[72/100] (measure) ILSVRC2012_val_00001250.png -> ILSVRC2012_val_00001250.png, total=0.1822 s, encoder=0.0074 s, unet=0.1526 s, decoder=0.0166 s, unet_steps=15
+[73/100] (measure) ILSVRC2012_val_00001272.png -> ILSVRC2012_val_00001272.png, total=0.1852 s, encoder=0.0077 s, unet=0.1511 s, decoder=0.0163 s, unet_steps=15
+[74/100] (measure) ILSVRC2012_val_00001292.png -> ILSVRC2012_val_00001292.png, total=0.1621 s, encoder=0.0074 s, unet=0.1312 s, decoder=0.0163 s, unet_steps=15
+[75/100] (measure) ILSVRC2012_val_00001305.png -> ILSVRC2012_val_00001305.png, total=0.1723 s, encoder=0.0074 s, unet=0.1400 s, decoder=0.0157 s, unet_steps=15
+[76/100] (measure) ILSVRC2012_val_00001315.png -> ILSVRC2012_val_00001315.png, total=0.1539 s, encoder=0.0068 s, unet=0.1266 s, decoder=0.0163 s, unet_steps=15
+[77/100] (measure) ILSVRC2012_val_00001324.png -> ILSVRC2012_val_00001324.png, total=0.1710 s, encoder=0.0068 s, unet=0.1239 s, decoder=0.0164 s, unet_steps=15
+[78/100] (measure) ILSVRC2012_val_00001327.png -> ILSVRC2012_val_00001327.png, total=0.1633 s, encoder=0.0074 s, unet=0.1303 s, decoder=0.0163 s, unet_steps=15
+[79/100] (measure) ILSVRC2012_val_00001369.png -> ILSVRC2012_val_00001369.png, total=0.1647 s, encoder=0.0074 s, unet=0.1299 s, decoder=0.0163 s, unet_steps=15
+[80/100] (measure) ILSVRC2012_val_00001373.png -> ILSVRC2012_val_00001373.png, total=0.1582 s, encoder=0.0074 s, unet=0.1300 s, decoder=0.0163 s, unet_steps=15
+[81/100] (measure) ILSVRC2012_val_00001389.png -> ILSVRC2012_val_00001389.png, total=0.1506 s, encoder=0.0074 s, unet=0.1219 s, decoder=0.0167 s, unet_steps=15
+[82/100] (measure) ILSVRC2012_val_00001393.png -> ILSVRC2012_val_00001393.png, total=0.1585 s, encoder=0.0074 s, unet=0.1303 s, decoder=0.0162 s, unet_steps=15
+[83/100] (measure) ILSVRC2012_val_00001394.png -> ILSVRC2012_val_00001394.png, total=0.1572 s, encoder=0.0074 s, unet=0.1289 s, decoder=0.0163 s, unet_steps=15
+[84/100] (measure) ILSVRC2012_val_00001435.png -> ILSVRC2012_val_00001435.png, total=0.1569 s, encoder=0.0074 s, unet=0.1288 s, decoder=0.0162 s, unet_steps=15
+[85/100] (measure) ILSVRC2012_val_00001448.png -> ILSVRC2012_val_00001448.png, total=0.1552 s, encoder=0.0074 s, unet=0.1268 s, decoder=0.0157 s, unet_steps=15
+[86/100] (measure) ILSVRC2012_val_00001449.png -> ILSVRC2012_val_00001449.png, total=0.1569 s, encoder=0.0068 s, unet=0.1285 s, decoder=0.0165 s, unet_steps=15
+[87/100] (measure) ILSVRC2012_val_00001454.png -> ILSVRC2012_val_00001454.png, total=0.1843 s, encoder=0.0074 s, unet=0.1423 s, decoder=0.0166 s, unet_steps=15
+[88/100] (measure) ILSVRC2012_val_00001543.png -> ILSVRC2012_val_00001543.png, total=0.1693 s, encoder=0.0074 s, unet=0.1406 s, decoder=0.0163 s, unet_steps=15
+[89/100] (measure) ILSVRC2012_val_00001545.png -> ILSVRC2012_val_00001545.png, total=0.1926 s, encoder=0.0073 s, unet=0.1494 s, decoder=0.0160 s, unet_steps=15
+[90/100] (measure) ILSVRC2012_val_00001552.png -> ILSVRC2012_val_00001552.png, total=0.1795 s, encoder=0.0068 s, unet=0.1513 s, decoder=0.0164 s, unet_steps=15
+[91/100] (measure) ILSVRC2012_val_00001562.png -> ILSVRC2012_val_00001562.png, total=0.1706 s, encoder=0.0073 s, unet=0.1422 s, decoder=0.0164 s, unet_steps=15
+[92/100] (measure) ILSVRC2012_val_00001605.png -> ILSVRC2012_val_00001605.png, total=0.1736 s, encoder=0.0077 s, unet=0.1449 s, decoder=0.0163 s, unet_steps=15
+[93/100] (measure) ILSVRC2012_val_00001611.png -> ILSVRC2012_val_00001611.png, total=0.1618 s, encoder=0.0075 s, unet=0.1337 s, decoder=0.0163 s, unet_steps=15
+[94/100] (measure) ILSVRC2012_val_00001670.png -> ILSVRC2012_val_00001670.png, total=0.1681 s, encoder=0.0073 s, unet=0.1285 s, decoder=0.0162 s, unet_steps=15
+[95/100] (measure) ILSVRC2012_val_00001674.png -> ILSVRC2012_val_00001674.png, total=0.1832 s, encoder=0.0074 s, unet=0.1520 s, decoder=0.0189 s, unet_steps=15
+[96/100] (measure) ILSVRC2012_val_00001679.png -> ILSVRC2012_val_00001679.png, total=0.1797 s, encoder=0.0093 s, unet=0.1478 s, decoder=0.0164 s, unet_steps=15
+[97/100] (measure) ILSVRC2012_val_00001682.png -> ILSVRC2012_val_00001682.png, total=0.1987 s, encoder=0.0073 s, unet=0.1635 s, decoder=0.0164 s, unet_steps=15
+[98/100] (measure) ILSVRC2012_val_00001683.png -> ILSVRC2012_val_00001683.png, total=0.1878 s, encoder=0.0075 s, unet=0.1578 s, decoder=0.0160 s, unet_steps=15
+[99/100] (measure) ILSVRC2012_val_00001700.png -> ILSVRC2012_val_00001700.png, total=0.1874 s, encoder=0.0070 s, unet=0.1581 s, decoder=0.0157 s, unet_steps=15
+[100/100] (measure) ILSVRC2012_val_00001703.png -> ILSVRC2012_val_00001703.png, total=0.1721 s, encoder=0.0068 s, unet=0.1420 s, decoder=0.0166 s, unet_steps=15
+Processed 100 image(s)
+Measured images (excluding warmup): 100
+Total measured inference time: 17.3383 s
+Average inference time per image: 0.1734 s
+Average encoder time per image: 0.0073 s
+Average UNet time per image: 0.1423 s
+Average decoder time per image: 0.0164 s
+Average UNet time per step: 0.009490 s
 Saved SR result(s) to: /home/ubuntu/ResShift/onnx_inference/outputs/runtime_test
 
 
@@ -41,22 +135,115 @@ Warmup enabled: 3 run(s) with synthetic input shape=(1, 3, 64, 64)
 [warmup 2/3] done
 [warmup 3/3] done
 LQ shape: (1, 3, 64, 64), upsampled shape: (1, 3, 256, 256)
-[1/10] (measure) ILSVRC2012_val_00000067.png -> ILSVRC2012_val_00000067.png, 0.4231 s
-[2/10] (measure) ILSVRC2012_val_00000073.png -> ILSVRC2012_val_00000073.png, 0.2399 s
-[3/10] (measure) ILSVRC2012_val_00000079.png -> ILSVRC2012_val_00000079.png, 0.4089 s
-[4/10] (measure) ILSVRC2012_val_00000084.png -> ILSVRC2012_val_00000084.png, 0.2409 s
-[5/10] (measure) ILSVRC2012_val_00000104.png -> ILSVRC2012_val_00000104.png, 0.4135 s
-[6/10] (measure) ILSVRC2012_val_00000105.png -> ILSVRC2012_val_00000105.png, 0.3909 s
-[7/10] (measure) ILSVRC2012_val_00000134.png -> ILSVRC2012_val_00000134.png, 0.2682 s
-[8/10] (measure) ILSVRC2012_val_00000151.png -> ILSVRC2012_val_00000151.png, 0.4372 s
-[9/10] (measure) ILSVRC2012_val_00000153.png -> ILSVRC2012_val_00000153.png, 0.2318 s
-[10/10] (measure) ILSVRC2012_val_00000164.png -> ILSVRC2012_val_00000164.png, 0.4352 s
-Processed 10 image(s)
-Measured images (excluding warmup): 10
-Total measured inference time: 3.4895 s
-Average inference time per image: 0.3490 s
+[1/100] (measure) ILSVRC2012_val_00000067.png -> ILSVRC2012_val_00000067.png, total=0.1601 s, encoder=0.0070 s, unet=0.1338 s, decoder=0.0159 s, unet_steps=15
+[2/100] (measure) ILSVRC2012_val_00000073.png -> ILSVRC2012_val_00000073.png, total=0.1597 s, encoder=0.0072 s, unet=0.1331 s, decoder=0.0159 s, unet_steps=15
+[3/100] (measure) ILSVRC2012_val_00000079.png -> ILSVRC2012_val_00000079.png, total=0.1750 s, encoder=0.0070 s, unet=0.1480 s, decoder=0.0159 s, unet_steps=15
+[4/100] (measure) ILSVRC2012_val_00000084.png -> ILSVRC2012_val_00000084.png, total=0.1999 s, encoder=0.0069 s, unet=0.1722 s, decoder=0.0159 s, unet_steps=15
+[5/100] (measure) ILSVRC2012_val_00000104.png -> ILSVRC2012_val_00000104.png, total=0.2052 s, encoder=0.0070 s, unet=0.1769 s, decoder=0.0161 s, unet_steps=15
+[6/100] (measure) ILSVRC2012_val_00000105.png -> ILSVRC2012_val_00000105.png, total=0.2044 s, encoder=0.0070 s, unet=0.1769 s, decoder=0.0157 s, unet_steps=15
+[7/100] (measure) ILSVRC2012_val_00000134.png -> ILSVRC2012_val_00000134.png, total=0.1969 s, encoder=0.0067 s, unet=0.1699 s, decoder=0.0160 s, unet_steps=15
+[8/100] (measure) ILSVRC2012_val_00000151.png -> ILSVRC2012_val_00000151.png, total=0.2015 s, encoder=0.0070 s, unet=0.1743 s, decoder=0.0159 s, unet_steps=15
+[9/100] (measure) ILSVRC2012_val_00000153.png -> ILSVRC2012_val_00000153.png, total=0.2012 s, encoder=0.0070 s, unet=0.1740 s, decoder=0.0159 s, unet_steps=15
+[10/100] (measure) ILSVRC2012_val_00000164.png -> ILSVRC2012_val_00000164.png, total=0.2017 s, encoder=0.0070 s, unet=0.1744 s, decoder=0.0160 s, unet_steps=15
+[11/100] (measure) ILSVRC2012_val_00000180.png -> ILSVRC2012_val_00000180.png, total=0.2017 s, encoder=0.0070 s, unet=0.1743 s, decoder=0.0160 s, unet_steps=15
+[12/100] (measure) ILSVRC2012_val_00000183.png -> ILSVRC2012_val_00000183.png, total=0.2024 s, encoder=0.0070 s, unet=0.1739 s, decoder=0.0160 s, unet_steps=15
+[13/100] (measure) ILSVRC2012_val_00000185.png -> ILSVRC2012_val_00000185.png, total=0.1955 s, encoder=0.0070 s, unet=0.1682 s, decoder=0.0160 s, unet_steps=15
+[14/100] (measure) ILSVRC2012_val_00000191.png -> ILSVRC2012_val_00000191.png, total=0.1865 s, encoder=0.0070 s, unet=0.1596 s, decoder=0.0159 s, unet_steps=15
+[15/100] (measure) ILSVRC2012_val_00000204.png -> ILSVRC2012_val_00000204.png, total=0.2004 s, encoder=0.0070 s, unet=0.1730 s, decoder=0.0160 s, unet_steps=15
+[16/100] (measure) ILSVRC2012_val_00000218.png -> ILSVRC2012_val_00000218.png, total=0.2003 s, encoder=0.0070 s, unet=0.1730 s, decoder=0.0160 s, unet_steps=15
+[17/100] (measure) ILSVRC2012_val_00000219.png -> ILSVRC2012_val_00000219.png, total=0.1786 s, encoder=0.0070 s, unet=0.1518 s, decoder=0.0159 s, unet_steps=15
+[18/100] (measure) ILSVRC2012_val_00000232.png -> ILSVRC2012_val_00000232.png, total=0.1626 s, encoder=0.0069 s, unet=0.1360 s, decoder=0.0160 s, unet_steps=15
+[19/100] (measure) ILSVRC2012_val_00000235.png -> ILSVRC2012_val_00000235.png, total=0.2100 s, encoder=0.0067 s, unet=0.1831 s, decoder=0.0160 s, unet_steps=15
+[20/100] (measure) ILSVRC2012_val_00000244.png -> ILSVRC2012_val_00000244.png, total=0.1863 s, encoder=0.0070 s, unet=0.1479 s, decoder=0.0242 s, unet_steps=15
+[21/100] (measure) ILSVRC2012_val_00000246.png -> ILSVRC2012_val_00000246.png, total=0.1920 s, encoder=0.0070 s, unet=0.1486 s, decoder=0.0160 s, unet_steps=15
+[22/100] (measure) ILSVRC2012_val_00000251.png -> ILSVRC2012_val_00000251.png, total=0.1615 s, encoder=0.0070 s, unet=0.1350 s, decoder=0.0159 s, unet_steps=15
+[23/100] (measure) ILSVRC2012_val_00000253.png -> ILSVRC2012_val_00000253.png, total=0.1939 s, encoder=0.0069 s, unet=0.1668 s, decoder=0.0159 s, unet_steps=15
+[24/100] (measure) ILSVRC2012_val_00000258.png -> ILSVRC2012_val_00000258.png, total=0.1984 s, encoder=0.0070 s, unet=0.1712 s, decoder=0.0159 s, unet_steps=15
+[25/100] (measure) ILSVRC2012_val_00000277.png -> ILSVRC2012_val_00000277.png, total=0.2029 s, encoder=0.0070 s, unet=0.1758 s, decoder=0.0157 s, unet_steps=15
+[26/100] (measure) ILSVRC2012_val_00000293.png -> ILSVRC2012_val_00000293.png, total=0.1980 s, encoder=0.0067 s, unet=0.1711 s, decoder=0.0159 s, unet_steps=15
+[27/100] (measure) ILSVRC2012_val_00000343.png -> ILSVRC2012_val_00000343.png, total=0.2053 s, encoder=0.0070 s, unet=0.1780 s, decoder=0.0160 s, unet_steps=15
+[28/100] (measure) ILSVRC2012_val_00000364.png -> ILSVRC2012_val_00000364.png, total=0.2026 s, encoder=0.0070 s, unet=0.1750 s, decoder=0.0160 s, unet_steps=15
+[29/100] (measure) ILSVRC2012_val_00000382.png -> ILSVRC2012_val_00000382.png, total=0.1772 s, encoder=0.0070 s, unet=0.1500 s, decoder=0.0157 s, unet_steps=15
+[30/100] (measure) ILSVRC2012_val_00000411.png -> ILSVRC2012_val_00000411.png, total=0.1975 s, encoder=0.0067 s, unet=0.1684 s, decoder=0.0166 s, unet_steps=15
+[31/100] (measure) ILSVRC2012_val_00000415.png -> ILSVRC2012_val_00000415.png, total=0.1779 s, encoder=0.0071 s, unet=0.1498 s, decoder=0.0161 s, unet_steps=15
+[32/100] (measure) ILSVRC2012_val_00000437.png -> ILSVRC2012_val_00000437.png, total=0.1656 s, encoder=0.0070 s, unet=0.1378 s, decoder=0.0161 s, unet_steps=15
+[33/100] (measure) ILSVRC2012_val_00000442.png -> ILSVRC2012_val_00000442.png, total=0.1807 s, encoder=0.0072 s, unet=0.1531 s, decoder=0.0158 s, unet_steps=15
+[34/100] (measure) ILSVRC2012_val_00000446.png -> ILSVRC2012_val_00000446.png, total=0.2025 s, encoder=0.0068 s, unet=0.1699 s, decoder=0.0157 s, unet_steps=15
+[35/100] (measure) ILSVRC2012_val_00000470.png -> ILSVRC2012_val_00000470.png, total=0.1603 s, encoder=0.0068 s, unet=0.1331 s, decoder=0.0160 s, unet_steps=15
+[36/100] (measure) ILSVRC2012_val_00000518.png -> ILSVRC2012_val_00000518.png, total=0.1662 s, encoder=0.0071 s, unet=0.1382 s, decoder=0.0160 s, unet_steps=15
+[37/100] (measure) ILSVRC2012_val_00000565.png -> ILSVRC2012_val_00000565.png, total=0.1622 s, encoder=0.0071 s, unet=0.1352 s, decoder=0.0159 s, unet_steps=15
+[38/100] (measure) ILSVRC2012_val_00000578.png -> ILSVRC2012_val_00000578.png, total=0.1627 s, encoder=0.0072 s, unet=0.1351 s, decoder=0.0160 s, unet_steps=15
+[39/100] (measure) ILSVRC2012_val_00000581.png -> ILSVRC2012_val_00000581.png, total=0.1646 s, encoder=0.0071 s, unet=0.1372 s, decoder=0.0160 s, unet_steps=15
+[40/100] (measure) ILSVRC2012_val_00000601.png -> ILSVRC2012_val_00000601.png, total=0.1642 s, encoder=0.0072 s, unet=0.1364 s, decoder=0.0160 s, unet_steps=15
+[41/100] (measure) ILSVRC2012_val_00000610.png -> ILSVRC2012_val_00000610.png, total=0.1735 s, encoder=0.0072 s, unet=0.1459 s, decoder=0.0160 s, unet_steps=15
+[42/100] (measure) ILSVRC2012_val_00000629.png -> ILSVRC2012_val_00000629.png, total=0.1671 s, encoder=0.0071 s, unet=0.1396 s, decoder=0.0160 s, unet_steps=15
+[43/100] (measure) ILSVRC2012_val_00000655.png -> ILSVRC2012_val_00000655.png, total=0.1646 s, encoder=0.0072 s, unet=0.1353 s, decoder=0.0160 s, unet_steps=15
+[44/100] (measure) ILSVRC2012_val_00000668.png -> ILSVRC2012_val_00000668.png, total=0.1622 s, encoder=0.0071 s, unet=0.1343 s, decoder=0.0160 s, unet_steps=15
+[45/100] (measure) ILSVRC2012_val_00000676.png -> ILSVRC2012_val_00000676.png, total=0.1626 s, encoder=0.0071 s, unet=0.1350 s, decoder=0.0160 s, unet_steps=15
+[46/100] (measure) ILSVRC2012_val_00000698.png -> ILSVRC2012_val_00000698.png, total=0.1652 s, encoder=0.0071 s, unet=0.1325 s, decoder=0.0157 s, unet_steps=15
+[47/100] (measure) ILSVRC2012_val_00000711.png -> ILSVRC2012_val_00000711.png, total=0.1641 s, encoder=0.0068 s, unet=0.1314 s, decoder=0.0159 s, unet_steps=15
+[48/100] (measure) ILSVRC2012_val_00000718.png -> ILSVRC2012_val_00000718.png, total=0.1665 s, encoder=0.0071 s, unet=0.1385 s, decoder=0.0160 s, unet_steps=15
+[49/100] (measure) ILSVRC2012_val_00000801.png -> ILSVRC2012_val_00000801.png, total=0.1640 s, encoder=0.0072 s, unet=0.1354 s, decoder=0.0160 s, unet_steps=15
+[50/100] (measure) ILSVRC2012_val_00000835.png -> ILSVRC2012_val_00000835.png, total=0.1959 s, encoder=0.0072 s, unet=0.1663 s, decoder=0.0163 s, unet_steps=15
+[51/100] (measure) ILSVRC2012_val_00000859.png -> ILSVRC2012_val_00000859.png, total=0.1956 s, encoder=0.0072 s, unet=0.1626 s, decoder=0.0160 s, unet_steps=15
+[52/100] (measure) ILSVRC2012_val_00000881.png -> ILSVRC2012_val_00000881.png, total=0.1640 s, encoder=0.0070 s, unet=0.1367 s, decoder=0.0160 s, unet_steps=15
+[53/100] (measure) ILSVRC2012_val_00000898.png -> ILSVRC2012_val_00000898.png, total=0.1642 s, encoder=0.0070 s, unet=0.1368 s, decoder=0.0160 s, unet_steps=15
+[54/100] (measure) ILSVRC2012_val_00000947.png -> ILSVRC2012_val_00000947.png, total=0.1633 s, encoder=0.0070 s, unet=0.1362 s, decoder=0.0159 s, unet_steps=15
+[55/100] (measure) ILSVRC2012_val_00000956.png -> ILSVRC2012_val_00000956.png, total=0.1665 s, encoder=0.0070 s, unet=0.1389 s, decoder=0.0160 s, unet_steps=15
+[56/100] (measure) ILSVRC2012_val_00000965.png -> ILSVRC2012_val_00000965.png, total=0.1671 s, encoder=0.0070 s, unet=0.1367 s, decoder=0.0159 s, unet_steps=15
+[57/100] (measure) ILSVRC2012_val_00000986.png -> ILSVRC2012_val_00000986.png, total=0.1636 s, encoder=0.0070 s, unet=0.1364 s, decoder=0.0159 s, unet_steps=15
+[58/100] (measure) ILSVRC2012_val_00000988.png -> ILSVRC2012_val_00000988.png, total=0.1663 s, encoder=0.0070 s, unet=0.1392 s, decoder=0.0157 s, unet_steps=15
+[59/100] (measure) ILSVRC2012_val_00000993.png -> ILSVRC2012_val_00000993.png, total=0.1717 s, encoder=0.0067 s, unet=0.1332 s, decoder=0.0162 s, unet_steps=15
+[60/100] (measure) ILSVRC2012_val_00001006.png -> ILSVRC2012_val_00001006.png, total=0.1668 s, encoder=0.0069 s, unet=0.1350 s, decoder=0.0159 s, unet_steps=15
+[61/100] (measure) ILSVRC2012_val_00001016.png -> ILSVRC2012_val_00001016.png, total=0.1560 s, encoder=0.0072 s, unet=0.1289 s, decoder=0.0159 s, unet_steps=15
+[62/100] (measure) ILSVRC2012_val_00001043.png -> ILSVRC2012_val_00001043.png, total=0.1611 s, encoder=0.0070 s, unet=0.1339 s, decoder=0.0160 s, unet_steps=15
+[63/100] (measure) ILSVRC2012_val_00001045.png -> ILSVRC2012_val_00001045.png, total=0.1827 s, encoder=0.0070 s, unet=0.1328 s, decoder=0.0159 s, unet_steps=15
+[64/100] (measure) ILSVRC2012_val_00001057.png -> ILSVRC2012_val_00001057.png, total=0.1623 s, encoder=0.0070 s, unet=0.1332 s, decoder=0.0159 s, unet_steps=15
+[65/100] (measure) ILSVRC2012_val_00001076.png -> ILSVRC2012_val_00001076.png, total=0.1846 s, encoder=0.0070 s, unet=0.1334 s, decoder=0.0159 s, unet_steps=15
+[66/100] (measure) ILSVRC2012_val_00001080.png -> ILSVRC2012_val_00001080.png, total=0.1654 s, encoder=0.0072 s, unet=0.1351 s, decoder=0.0157 s, unet_steps=15
+[67/100] (measure) ILSVRC2012_val_00001090.png -> ILSVRC2012_val_00001090.png, total=0.1843 s, encoder=0.0067 s, unet=0.1461 s, decoder=0.0157 s, unet_steps=15
+[68/100] (measure) ILSVRC2012_val_00001104.png -> ILSVRC2012_val_00001104.png, total=0.1590 s, encoder=0.0067 s, unet=0.1326 s, decoder=0.0159 s, unet_steps=15
+[69/100] (measure) ILSVRC2012_val_00001129.png -> ILSVRC2012_val_00001129.png, total=0.1617 s, encoder=0.0070 s, unet=0.1334 s, decoder=0.0159 s, unet_steps=15
+[70/100] (measure) ILSVRC2012_val_00001202.png -> ILSVRC2012_val_00001202.png, total=0.1584 s, encoder=0.0070 s, unet=0.1318 s, decoder=0.0157 s, unet_steps=15
+[71/100] (measure) ILSVRC2012_val_00001213.png -> ILSVRC2012_val_00001213.png, total=0.1588 s, encoder=0.0067 s, unet=0.1323 s, decoder=0.0159 s, unet_steps=15
+[72/100] (measure) ILSVRC2012_val_00001250.png -> ILSVRC2012_val_00001250.png, total=0.1600 s, encoder=0.0070 s, unet=0.1330 s, decoder=0.0159 s, unet_steps=15
+[73/100] (measure) ILSVRC2012_val_00001272.png -> ILSVRC2012_val_00001272.png, total=0.1590 s, encoder=0.0071 s, unet=0.1291 s, decoder=0.0157 s, unet_steps=15
+[74/100] (measure) ILSVRC2012_val_00001292.png -> ILSVRC2012_val_00001292.png, total=0.1716 s, encoder=0.0069 s, unet=0.1297 s, decoder=0.0159 s, unet_steps=15
+[75/100] (measure) ILSVRC2012_val_00001305.png -> ILSVRC2012_val_00001305.png, total=0.1659 s, encoder=0.0070 s, unet=0.1380 s, decoder=0.0163 s, unet_steps=15
+[76/100] (measure) ILSVRC2012_val_00001315.png -> ILSVRC2012_val_00001315.png, total=0.1599 s, encoder=0.0071 s, unet=0.1327 s, decoder=0.0159 s, unet_steps=15
+[77/100] (measure) ILSVRC2012_val_00001324.png -> ILSVRC2012_val_00001324.png, total=0.1595 s, encoder=0.0070 s, unet=0.1326 s, decoder=0.0159 s, unet_steps=15
+[78/100] (measure) ILSVRC2012_val_00001327.png -> ILSVRC2012_val_00001327.png, total=0.1666 s, encoder=0.0070 s, unet=0.1328 s, decoder=0.0159 s, unet_steps=15
+[79/100] (measure) ILSVRC2012_val_00001369.png -> ILSVRC2012_val_00001369.png, total=0.1862 s, encoder=0.0070 s, unet=0.1334 s, decoder=0.0159 s, unet_steps=15
+[80/100] (measure) ILSVRC2012_val_00001373.png -> ILSVRC2012_val_00001373.png, total=0.1708 s, encoder=0.0070 s, unet=0.1348 s, decoder=0.0159 s, unet_steps=15
+[81/100] (measure) ILSVRC2012_val_00001389.png -> ILSVRC2012_val_00001389.png, total=0.1661 s, encoder=0.0070 s, unet=0.1377 s, decoder=0.0161 s, unet_steps=15
+[82/100] (measure) ILSVRC2012_val_00001393.png -> ILSVRC2012_val_00001393.png, total=0.1655 s, encoder=0.0070 s, unet=0.1384 s, decoder=0.0159 s, unet_steps=15
+[83/100] (measure) ILSVRC2012_val_00001394.png -> ILSVRC2012_val_00001394.png, total=0.1987 s, encoder=0.0071 s, unet=0.1382 s, decoder=0.0160 s, unet_steps=15
+[84/100] (measure) ILSVRC2012_val_00001435.png -> ILSVRC2012_val_00001435.png, total=0.1635 s, encoder=0.0067 s, unet=0.1356 s, decoder=0.0160 s, unet_steps=15
+[85/100] (measure) ILSVRC2012_val_00001448.png -> ILSVRC2012_val_00001448.png, total=0.1753 s, encoder=0.0070 s, unet=0.1350 s, decoder=0.0158 s, unet_steps=15
+[86/100] (measure) ILSVRC2012_val_00001449.png -> ILSVRC2012_val_00001449.png, total=0.2033 s, encoder=0.0073 s, unet=0.1290 s, decoder=0.0159 s, unet_steps=15
+[87/100] (measure) ILSVRC2012_val_00001454.png -> ILSVRC2012_val_00001454.png, total=0.1588 s, encoder=0.0070 s, unet=0.1317 s, decoder=0.0159 s, unet_steps=15
+[88/100] (measure) ILSVRC2012_val_00001543.png -> ILSVRC2012_val_00001543.png, total=0.1739 s, encoder=0.0071 s, unet=0.1427 s, decoder=0.0160 s, unet_steps=15
+[89/100] (measure) ILSVRC2012_val_00001545.png -> ILSVRC2012_val_00001545.png, total=0.2078 s, encoder=0.0071 s, unet=0.1794 s, decoder=0.0161 s, unet_steps=15
+[90/100] (measure) ILSVRC2012_val_00001552.png -> ILSVRC2012_val_00001552.png, total=0.2022 s, encoder=0.0071 s, unet=0.1743 s, decoder=0.0159 s, unet_steps=15
+[91/100] (measure) ILSVRC2012_val_00001562.png -> ILSVRC2012_val_00001562.png, total=0.1990 s, encoder=0.0070 s, unet=0.1715 s, decoder=0.0157 s, unet_steps=15
+[92/100] (measure) ILSVRC2012_val_00001605.png -> ILSVRC2012_val_00001605.png, total=0.1768 s, encoder=0.0067 s, unet=0.1499 s, decoder=0.0159 s, unet_steps=15
+[93/100] (measure) ILSVRC2012_val_00001611.png -> ILSVRC2012_val_00001611.png, total=0.1604 s, encoder=0.0070 s, unet=0.1325 s, decoder=0.0159 s, unet_steps=15
+[94/100] (measure) ILSVRC2012_val_00001670.png -> ILSVRC2012_val_00001670.png, total=0.1769 s, encoder=0.0070 s, unet=0.1473 s, decoder=0.0164 s, unet_steps=15
+[95/100] (measure) ILSVRC2012_val_00001674.png -> ILSVRC2012_val_00001674.png, total=0.2139 s, encoder=0.0077 s, unet=0.1840 s, decoder=0.0161 s, unet_steps=15
+[96/100] (measure) ILSVRC2012_val_00001679.png -> ILSVRC2012_val_00001679.png, total=0.1634 s, encoder=0.0070 s, unet=0.1359 s, decoder=0.0161 s, unet_steps=15
+[97/100] (measure) ILSVRC2012_val_00001682.png -> ILSVRC2012_val_00001682.png, total=0.1584 s, encoder=0.0070 s, unet=0.1314 s, decoder=0.0157 s, unet_steps=15
+[98/100] (measure) ILSVRC2012_val_00001683.png -> ILSVRC2012_val_00001683.png, total=0.1671 s, encoder=0.0068 s, unet=0.1361 s, decoder=0.0160 s, unet_steps=15
+[99/100] (measure) ILSVRC2012_val_00001700.png -> ILSVRC2012_val_00001700.png, total=0.2006 s, encoder=0.0070 s, unet=0.1724 s, decoder=0.0160 s, unet_steps=15
+[100/100] (measure) ILSVRC2012_val_00001703.png -> ILSVRC2012_val_00001703.png, total=0.2517 s, encoder=0.0071 s, unet=0.2228 s, decoder=0.0158 s, unet_steps=15
+Processed 100 image(s)
+Measured images (excluding warmup): 100
+Total measured inference time: 17.8583 s
+Average inference time per image: 0.1786 s
+Average encoder time per image: 0.0070 s
+Average UNet time per image: 0.1482 s
+Average decoder time per image: 0.0160 s
+Average UNet time per step: 0.009881 s
 Saved SR result(s) to: /home/ubuntu/ResShift/onnx_inference/outputs/runtime_test2
-
 
 ====================Log initialized. Logging to: /home/ubuntu/ResShift/onnx_inference/log/inference_log.log====================
 >>>>>UNet ONNX path: onnx_inference/models/resshift_model.onnx<<<<<
@@ -70,20 +257,24 @@ Warmup enabled: 3 run(s) with synthetic input shape=(1, 3, 64, 64)
 [warmup 2/3] done
 [warmup 3/3] done
 LQ shape: (1, 3, 64, 64), upsampled shape: (1, 3, 256, 256)
-[1/10] (measure) ILSVRC2012_val_00000067.png -> ILSVRC2012_val_00000067.png, 0.5186 s
-[2/10] (measure) ILSVRC2012_val_00000073.png -> ILSVRC2012_val_00000073.png, 0.3714 s
-[3/10] (measure) ILSVRC2012_val_00000079.png -> ILSVRC2012_val_00000079.png, 0.4219 s
-[4/10] (measure) ILSVRC2012_val_00000084.png -> ILSVRC2012_val_00000084.png, 0.4883 s
-[5/10] (measure) ILSVRC2012_val_00000104.png -> ILSVRC2012_val_00000104.png, 0.5249 s
-[6/10] (measure) ILSVRC2012_val_00000105.png -> ILSVRC2012_val_00000105.png, 0.3077 s
-[7/10] (measure) ILSVRC2012_val_00000134.png -> ILSVRC2012_val_00000134.png, 0.4473 s
-[8/10] (measure) ILSVRC2012_val_00000151.png -> ILSVRC2012_val_00000151.png, 0.4574 s
-[9/10] (measure) ILSVRC2012_val_00000153.png -> ILSVRC2012_val_00000153.png, 0.2905 s
-[10/10] (measure) ILSVRC2012_val_00000164.png -> ILSVRC2012_val_00000164.png, 0.4456 s
-Processed 10 image(s)
-Measured images (excluding warmup): 10
-Total measured inference time: 4.2735 s
-Average inference time per image: 0.4274 s
+[10/100] (measure) ILSVRC2012_val_00000164.png -> ILSVRC2012_val_00000164.png, total=0.2408 s, encoder=0.0068 s, unet=0.1453 s, decoder=0.0160 s, unet_steps=15
+[20/100] (measure) ILSVRC2012_val_00000244.png -> ILSVRC2012_val_00000244.png, total=0.1698 s, encoder=0.0072 s, unet=0.1368 s, decoder=0.0160 s, unet_steps=15
+[30/100] (measure) ILSVRC2012_val_00000411.png -> ILSVRC2012_val_00000411.png, total=0.2135 s, encoder=0.0073 s, unet=0.1844 s, decoder=0.0160 s, unet_steps=15
+[40/100] (measure) ILSVRC2012_val_00000601.png -> ILSVRC2012_val_00000601.png, total=0.1642 s, encoder=0.0071 s, unet=0.1365 s, decoder=0.0160 s, unet_steps=15
+[50/100] (measure) ILSVRC2012_val_00000835.png -> ILSVRC2012_val_00000835.png, total=0.1678 s, encoder=0.0073 s, unet=0.1385 s, decoder=0.0161 s, unet_steps=15
+[60/100] (measure) ILSVRC2012_val_00001006.png -> ILSVRC2012_val_00001006.png, total=0.1611 s, encoder=0.0067 s, unet=0.1325 s, decoder=0.0161 s, unet_steps=15
+[70/100] (measure) ILSVRC2012_val_00001202.png -> ILSVRC2012_val_00001202.png, total=0.1650 s, encoder=0.0072 s, unet=0.1363 s, decoder=0.0162 s, unet_steps=15
+[80/100] (measure) ILSVRC2012_val_00001373.png -> ILSVRC2012_val_00001373.png, total=0.2031 s, encoder=0.0071 s, unet=0.1758 s, decoder=0.0157 s, unet_steps=15
+[90/100] (measure) ILSVRC2012_val_00001552.png -> ILSVRC2012_val_00001552.png, total=0.1629 s, encoder=0.0070 s, unet=0.1360 s, decoder=0.0160 s, unet_steps=15
+[100/100] (measure) ILSVRC2012_val_00001703.png -> ILSVRC2012_val_00001703.png, total=0.1722 s, encoder=0.0071 s, unet=0.1445 s, decoder=0.0160 s, unet_steps=15
+Processed 100 image(s)
+Measured images (excluding warmup): 100
+Total measured inference time: 17.9405 s
+Average inference time per image: 0.1794 s
+Average encoder time per image: 0.0071 s
+Average UNet time per image: 0.1465 s
+Average decoder time per image: 0.0160 s
+Average UNet time per step: 0.009764 s
 Saved SR result(s) to: /home/ubuntu/ResShift/onnx_inference/outputs/runtime_test
 
 
@@ -99,134 +290,22 @@ Warmup enabled: 3 run(s) with synthetic input shape=(1, 3, 64, 64)
 [warmup 2/3] done
 [warmup 3/3] done
 LQ shape: (1, 3, 64, 64), upsampled shape: (1, 3, 256, 256)
-[1/10] (measure) ILSVRC2012_val_00000067.png -> ILSVRC2012_val_00000067.png, 0.4039 s
-[2/10] (measure) ILSVRC2012_val_00000073.png -> ILSVRC2012_val_00000073.png, 0.2557 s
-[3/10] (measure) ILSVRC2012_val_00000079.png -> ILSVRC2012_val_00000079.png, 0.3978 s
-[4/10] (measure) ILSVRC2012_val_00000084.png -> ILSVRC2012_val_00000084.png, 0.2559 s
-[5/10] (measure) ILSVRC2012_val_00000104.png -> ILSVRC2012_val_00000104.png, 0.4006 s
-[6/10] (measure) ILSVRC2012_val_00000105.png -> ILSVRC2012_val_00000105.png, 0.4053 s
-[7/10] (measure) ILSVRC2012_val_00000134.png -> ILSVRC2012_val_00000134.png, 0.2371 s
-[8/10] (measure) ILSVRC2012_val_00000151.png -> ILSVRC2012_val_00000151.png, 0.4033 s
-[9/10] (measure) ILSVRC2012_val_00000153.png -> ILSVRC2012_val_00000153.png, 0.2352 s
-[10/10] (measure) ILSVRC2012_val_00000164.png -> ILSVRC2012_val_00000164.png, 0.4049 s
-Processed 10 image(s)
-Measured images (excluding warmup): 10
-Total measured inference time: 3.3998 s
-Average inference time per image: 0.3400 s
-Saved SR result(s) to: /home/ubuntu/ResShift/onnx_inference/outputs/runtime_test2
-
-
-====================Log initialized. Logging to: /home/ubuntu/ResShift/onnx_inference/log/inference_log.log====================
->>>>>UNet ONNX path: onnx_inference/models/resshift_model.onnx<<<<<
-Backend: UNet=onnxruntime, Encoder=onnxruntime, Decoder=onnxruntime
-Model IO names:
- unet_in=['x', 'lq', 'timesteps'], unet_out=output;
- enc_in=['image'], enc_out=latent;
- dec_in=['latent'], dec_out=image
-Warmup enabled: 3 run(s) with synthetic input shape=(1, 3, 64, 64)
-[warmup 1/3] done
-[warmup 2/3] done
-[warmup 3/3] done
-LQ shape: (1, 3, 64, 64), upsampled shape: (1, 3, 256, 256)
-[1/10] (measure) ILSVRC2012_val_00000067.png -> ILSVRC2012_val_00000067.png, 0.5240 s
-[2/10] (measure) ILSVRC2012_val_00000073.png -> ILSVRC2012_val_00000073.png, 0.4548 s
-[3/10] (measure) ILSVRC2012_val_00000079.png -> ILSVRC2012_val_00000079.png, 0.4762 s
-[4/10] (measure) ILSVRC2012_val_00000084.png -> ILSVRC2012_val_00000084.png, 0.5338 s
-[5/10] (measure) ILSVRC2012_val_00000104.png -> ILSVRC2012_val_00000104.png, 0.5600 s
-[6/10] (measure) ILSVRC2012_val_00000105.png -> ILSVRC2012_val_00000105.png, 0.5143 s
-[7/10] (measure) ILSVRC2012_val_00000134.png -> ILSVRC2012_val_00000134.png, 0.5339 s
-[8/10] (measure) ILSVRC2012_val_00000151.png -> ILSVRC2012_val_00000151.png, 0.4891 s
-[9/10] (measure) ILSVRC2012_val_00000153.png -> ILSVRC2012_val_00000153.png, 0.5112 s
-[10/10] (measure) ILSVRC2012_val_00000164.png -> ILSVRC2012_val_00000164.png, 0.5582 s
-Processed 10 image(s)
-Measured images (excluding warmup): 10
-Total measured inference time: 5.1555 s
-Average inference time per image: 0.5155 s
-Saved SR result(s) to: /home/ubuntu/ResShift/onnx_inference/outputs/runtime_test
-
-
-====================Log initialized. Logging to: /home/ubuntu/ResShift/onnx_inference/log/inference_log.log====================
->>>>>UNet ONNX path: onnx_inference/models_linear_attn/resshift_model.onnx<<<<<
-Backend: UNet=onnxruntime, Encoder=onnxruntime, Decoder=onnxruntime
-Model IO names:
- unet_in=['x', 'lq', 'timesteps'], unet_out=output;
- enc_in=['image'], enc_out=latent;
- dec_in=['latent'], dec_out=image
-Warmup enabled: 3 run(s) with synthetic input shape=(1, 3, 64, 64)
-[warmup 1/3] done
-[warmup 2/3] done
-[warmup 3/3] done
-LQ shape: (1, 3, 64, 64), upsampled shape: (1, 3, 256, 256)
-[1/10] (measure) ILSVRC2012_val_00000067.png -> ILSVRC2012_val_00000067.png, 0.4563 s
-[2/10] (measure) ILSVRC2012_val_00000073.png -> ILSVRC2012_val_00000073.png, 0.4284 s
-[3/10] (measure) ILSVRC2012_val_00000079.png -> ILSVRC2012_val_00000079.png, 0.4739 s
-[4/10] (measure) ILSVRC2012_val_00000084.png -> ILSVRC2012_val_00000084.png, 0.4191 s
-[5/10] (measure) ILSVRC2012_val_00000104.png -> ILSVRC2012_val_00000104.png, 0.4360 s
-[6/10] (measure) ILSVRC2012_val_00000105.png -> ILSVRC2012_val_00000105.png, 0.2899 s
-[7/10] (measure) ILSVRC2012_val_00000134.png -> ILSVRC2012_val_00000134.png, 0.4157 s
-[8/10] (measure) ILSVRC2012_val_00000151.png -> ILSVRC2012_val_00000151.png, 0.4219 s
-[9/10] (measure) ILSVRC2012_val_00000153.png -> ILSVRC2012_val_00000153.png, 0.4244 s
-[10/10] (measure) ILSVRC2012_val_00000164.png -> ILSVRC2012_val_00000164.png, 0.4328 s
-Processed 10 image(s)
-Measured images (excluding warmup): 10
-Total measured inference time: 4.1984 s
-Average inference time per image: 0.4198 s
-Saved SR result(s) to: /home/ubuntu/ResShift/onnx_inference/outputs/runtime_test2
-
-
-====================Log initialized. Logging to: /home/ubuntu/ResShift/onnx_inference/log/inference_log.log====================
->>>>>UNet ONNX path: onnx_inference/models/resshift_model.onnx<<<<<
-Backend: UNet=onnxruntime, Encoder=onnxruntime, Decoder=onnxruntime
-Model IO names:
- unet_in=['x', 'lq', 'timesteps'], unet_out=output;
- enc_in=['image'], enc_out=latent;
- dec_in=['latent'], dec_out=image
-Warmup enabled: 3 run(s) with synthetic input shape=(1, 3, 64, 64)
-[warmup 1/3] done
-[warmup 2/3] done
-[warmup 3/3] done
-LQ shape: (1, 3, 64, 64), upsampled shape: (1, 3, 256, 256)
-[1/10] (measure) ILSVRC2012_val_00000067.png -> ILSVRC2012_val_00000067.png, 0.5251 s
-[2/10] (measure) ILSVRC2012_val_00000073.png -> ILSVRC2012_val_00000073.png, 0.5544 s
-[3/10] (measure) ILSVRC2012_val_00000079.png -> ILSVRC2012_val_00000079.png, 0.4811 s
-[4/10] (measure) ILSVRC2012_val_00000084.png -> ILSVRC2012_val_00000084.png, 0.3744 s
-[5/10] (measure) ILSVRC2012_val_00000104.png -> ILSVRC2012_val_00000104.png, 0.5102 s
-[6/10] (measure) ILSVRC2012_val_00000105.png -> ILSVRC2012_val_00000105.png, 0.4978 s
-[7/10] (measure) ILSVRC2012_val_00000134.png -> ILSVRC2012_val_00000134.png, 0.5278 s
-[8/10] (measure) ILSVRC2012_val_00000151.png -> ILSVRC2012_val_00000151.png, 0.5548 s
-[9/10] (measure) ILSVRC2012_val_00000153.png -> ILSVRC2012_val_00000153.png, 0.4987 s
-[10/10] (measure) ILSVRC2012_val_00000164.png -> ILSVRC2012_val_00000164.png, 0.3396 s
-Processed 10 image(s)
-Measured images (excluding warmup): 10
-Total measured inference time: 4.8639 s
-Average inference time per image: 0.4864 s
-Saved SR result(s) to: /home/ubuntu/ResShift/onnx_inference/outputs/runtime_test
-
-
-====================Log initialized. Logging to: /home/ubuntu/ResShift/onnx_inference/log/inference_log.log====================
->>>>>UNet ONNX path: onnx_inference/models_linear_attn/resshift_model.onnx<<<<<
-Backend: UNet=onnxruntime, Encoder=onnxruntime, Decoder=onnxruntime
-Model IO names:
- unet_in=['x', 'lq', 'timesteps'], unet_out=output;
- enc_in=['image'], enc_out=latent;
- dec_in=['latent'], dec_out=image
-Warmup enabled: 3 run(s) with synthetic input shape=(1, 3, 64, 64)
-[warmup 1/3] done
-[warmup 2/3] done
-[warmup 3/3] done
-LQ shape: (1, 3, 64, 64), upsampled shape: (1, 3, 256, 256)
-[1/10] (measure) ILSVRC2012_val_00000067.png -> ILSVRC2012_val_00000067.png, 0.4150 s
-[2/10] (measure) ILSVRC2012_val_00000073.png -> ILSVRC2012_val_00000073.png, 0.4307 s
-[3/10] (measure) ILSVRC2012_val_00000079.png -> ILSVRC2012_val_00000079.png, 0.2380 s
-[4/10] (measure) ILSVRC2012_val_00000084.png -> ILSVRC2012_val_00000084.png, 0.4273 s
-[5/10] (measure) ILSVRC2012_val_00000104.png -> ILSVRC2012_val_00000104.png, 0.3464 s
-[6/10] (measure) ILSVRC2012_val_00000105.png -> ILSVRC2012_val_00000105.png, 0.3516 s
-[7/10] (measure) ILSVRC2012_val_00000134.png -> ILSVRC2012_val_00000134.png, 0.4312 s
-[8/10] (measure) ILSVRC2012_val_00000151.png -> ILSVRC2012_val_00000151.png, 0.2524 s
-[9/10] (measure) ILSVRC2012_val_00000153.png -> ILSVRC2012_val_00000153.png, 0.4097 s
-[10/10] (measure) ILSVRC2012_val_00000164.png -> ILSVRC2012_val_00000164.png, 0.3510 s
-Processed 10 image(s)
-Measured images (excluding warmup): 10
-Total measured inference time: 3.6534 s
-Average inference time per image: 0.3653 s
+[10/100] (measure) ILSVRC2012_val_00000164.png -> ILSVRC2012_val_00000164.png, total=0.1922 s, encoder=0.0071 s, unet=0.1204 s, decoder=0.0157 s, unet_steps=15
+[20/100] (measure) ILSVRC2012_val_00000244.png -> ILSVRC2012_val_00000244.png, total=0.1633 s, encoder=0.0069 s, unet=0.1243 s, decoder=0.0156 s, unet_steps=15
+[30/100] (measure) ILSVRC2012_val_00000411.png -> ILSVRC2012_val_00000411.png, total=0.1725 s, encoder=0.0072 s, unet=0.1430 s, decoder=0.0157 s, unet_steps=15
+[40/100] (measure) ILSVRC2012_val_00000601.png -> ILSVRC2012_val_00000601.png, total=0.1608 s, encoder=0.0069 s, unet=0.1292 s, decoder=0.0158 s, unet_steps=15
+[50/100] (measure) ILSVRC2012_val_00000835.png -> ILSVRC2012_val_00000835.png, total=0.3241 s, encoder=0.0070 s, unet=0.1516 s, decoder=0.0157 s, unet_steps=15
+[60/100] (measure) ILSVRC2012_val_00001006.png -> ILSVRC2012_val_00001006.png, total=0.1492 s, encoder=0.0069 s, unet=0.1221 s, decoder=0.0156 s, unet_steps=15
+[70/100] (measure) ILSVRC2012_val_00001202.png -> ILSVRC2012_val_00001202.png, total=0.1532 s, encoder=0.0068 s, unet=0.1233 s, decoder=0.0156 s, unet_steps=15
+[80/100] (measure) ILSVRC2012_val_00001373.png -> ILSVRC2012_val_00001373.png, total=0.1469 s, encoder=0.0068 s, unet=0.1202 s, decoder=0.0156 s, unet_steps=15
+[90/100] (measure) ILSVRC2012_val_00001552.png -> ILSVRC2012_val_00001552.png, total=0.1959 s, encoder=0.0067 s, unet=0.1572 s, decoder=0.0156 s, unet_steps=15
+[100/100] (measure) ILSVRC2012_val_00001703.png -> ILSVRC2012_val_00001703.png, total=0.1477 s, encoder=0.0067 s, unet=0.1217 s, decoder=0.0156 s, unet_steps=15
+Processed 100 image(s)
+Measured images (excluding warmup): 100
+Total measured inference time: 16.8618 s
+Average inference time per image: 0.1686 s
+Average encoder time per image: 0.0069 s
+Average UNet time per image: 0.1334 s
+Average decoder time per image: 0.0158 s
+Average UNet time per step: 0.008893 s
 Saved SR result(s) to: /home/ubuntu/ResShift/onnx_inference/outputs/runtime_test2
