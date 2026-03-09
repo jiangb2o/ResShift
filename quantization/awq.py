@@ -48,6 +48,9 @@ class AWQLinear(nn.Module):
             self.register_buffer("bias", torch.zeros(out_features, dtype=torch.float32))
         else:
             self.bias = None
+        self.register_buffer("weight_cache", torch.empty(0), persistent=False)
+        self.register_buffer("bias_cache", torch.empty(0), persistent=False)
+        self.dequant_mode = "cached"
 
     @classmethod
     def from_linear(
@@ -83,12 +86,51 @@ class AWQLinear(nn.Module):
         weight = weight / self.awq_scale.unsqueeze(0)
         return weight
 
+    def _compute_dtype(self, x: torch.Tensor) -> torch.dtype:
+        return torch.float16 if x.is_cuda else torch.float32
+
+    def set_dequant_mode(self, mode: str) -> None:
+        if mode not in {"cached", "dynamic"}:
+            raise ValueError(f"Unsupported dequant mode: {mode}")
+        self.dequant_mode = mode
+
+    def materialize_cache(
+        self,
+        *,
+        device: torch.device | None = None,
+        dtype: torch.dtype | None = None,
+    ) -> None:
+        target_device = device if device is not None else self.qweight.device
+        target_dtype = dtype if dtype is not None else (torch.float16 if target_device.type == "cuda" else torch.float32)
+        self.weight_cache = self._dequantize_weight().to(device=target_device, dtype=target_dtype)
+        if self.bias is not None:
+            self.bias_cache = self.bias.to(device=target_device, dtype=target_dtype)
+        else:
+            self.bias_cache = torch.empty(0, device=target_device, dtype=target_dtype)
+
+    def clear_cache(self) -> None:
+        self.weight_cache = torch.empty(0, device=self.qweight.device)
+        self.bias_cache = torch.empty(0, device=self.qweight.device)
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        weight = self._dequantize_weight().to(dtype=x.dtype, device=x.device)
-        bias = self.bias
-        if bias is not None:
-            bias = bias.to(dtype=x.dtype, device=x.device)
-        return F.linear(x, weight, bias)
+        compute_dtype = self._compute_dtype(x)
+        x_compute = x.to(dtype=compute_dtype)
+        if self.dequant_mode == "cached":
+            if (
+                self.weight_cache.numel() == 0
+                or self.weight_cache.device != x.device
+                or self.weight_cache.dtype != compute_dtype
+            ):
+                self.materialize_cache(device=x.device, dtype=compute_dtype)
+            weight = self.weight_cache
+            bias = self.bias_cache if self.bias is not None else None
+        else:
+            weight = self._dequantize_weight().to(dtype=compute_dtype, device=x.device)
+            bias = self.bias
+            if bias is not None:
+                bias = bias.to(dtype=compute_dtype, device=x.device)
+        out = F.linear(x_compute, weight, bias)
+        return out.to(dtype=x.dtype)
 
 
 def _should_quantize(name: str, layer: nn.Module, config: AWQConfig) -> bool:
@@ -310,6 +352,7 @@ def load_awq_quantized_model_from_payload(
     model: nn.Module,
     payload: Dict[str, object],
     device: torch.device,
+    dequant_mode: str = "cached",
 ) -> Tuple[nn.Module, Dict[str, Dict[str, object]]]:
     if not is_awq_checkpoint_payload(payload):
         raise ValueError(f"Unsupported AWQ checkpoint format: {payload.get('format')}")
@@ -324,10 +367,16 @@ def load_awq_quantized_model_from_payload(
             n_bits=int(info["n_bits"]),
             group_size=int(info["group_size"]),
         )
+        quant_layer.set_dequant_mode(dequant_mode)
         setattr(parent, child_name, quant_layer)
 
-    model.load_state_dict(payload["model_state"], strict=True)
+    current_state = model.state_dict()
+    payload_state = payload["model_state"]
+    filtered_state = {key: value for key, value in payload_state.items() if key in current_state}
+    model.load_state_dict(filtered_state, strict=False)
     model.to(device)
+    if dequant_mode == "cached":
+        materialize_awq_caches(model, device)
     model.eval()
     return model, quantized_layers
 
@@ -336,6 +385,14 @@ def load_awq_quantized_model(
     model: nn.Module,
     checkpoint_path: str,
     device: torch.device,
+    dequant_mode: str = "cached",
 ) -> Tuple[nn.Module, Dict[str, Dict[str, object]]]:
     payload = torch.load(checkpoint_path, map_location="cpu")
-    return load_awq_quantized_model_from_payload(model, payload, device)
+    return load_awq_quantized_model_from_payload(model, payload, device, dequant_mode=dequant_mode)
+
+
+def materialize_awq_caches(model: nn.Module, device: torch.device) -> None:
+    target_dtype = torch.float16 if device.type == "cuda" else torch.float32
+    for module in model.modules():
+        if isinstance(module, AWQLinear):
+            module.materialize_cache(device=device, dtype=target_dtype)
