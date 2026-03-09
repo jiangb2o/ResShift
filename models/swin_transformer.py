@@ -109,8 +109,10 @@ class WindowAttention(nn.Module):
         self.linfusion_seq_scale = float((window_size[0] * window_size[1]) ** -0.5)
 
         # define a parameter table of relative position bias
-        self.relative_position_bias_table = nn.Parameter(
-            torch.zeros((2 * window_size[0] - 1) * (2 * window_size[1] - 1), num_heads))  # 2*Wh-1 * 2*Ww-1, nH
+        # linfusion 时, 属于未使用的参数, 无法进行训练
+        if not use_linfusion:
+            self.relative_position_bias_table = nn.Parameter(
+                torch.zeros((2 * window_size[0] - 1) * (2 * window_size[1] - 1), num_heads))  # 2*Wh-1 * 2*Ww-1, nH
 
         # get pair-wise relative position index for each token inside the window
         coords_h = torch.arange(self.window_size[0])
@@ -131,7 +133,8 @@ class WindowAttention(nn.Module):
 
         self.proj_drop = nn.Dropout(proj_drop)
 
-        trunc_normal_(self.relative_position_bias_table, std=.02)
+        if not use_linfusion:
+            trunc_normal_(self.relative_position_bias_table, std=.02)
         self.softmax = nn.Softmax(dim=-1)
 
     def _linear_attention(self, q, k, v):
