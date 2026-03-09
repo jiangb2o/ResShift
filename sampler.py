@@ -217,9 +217,14 @@ class BaseSampler:
         self.num_gpus = num_gpus
         self.rank = int(os.environ['LOCAL_RANK']) if num_gpus > 1 else 0
 
-    def write_log(self, log_str):
+    def write_log(self, log_str, write2file=False):
         if self.rank == 0:
             print(log_str, flush=True)
+            if write2file:
+                log_path = Path(__file__).resolve().parent / 'inference_result' / 'runtime.log'
+                log_path.parent.mkdir(parents=True, exist_ok=True)
+                with log_path.open('a', encoding='utf-8') as log_file:
+                    log_file.write(f'{log_str}\n')
 
     def build_model(self):
         # diffusion model
@@ -231,8 +236,8 @@ class BaseSampler:
         if ckpt_path is None:
             ckpt_path = self.configs.export.ckpt_path
         assert ckpt_path is not None
-        self.write_log(f'Loading Diffusion model from {ckpt_path}...')
-        self.write_log(f'>>>use linfusion: {self.configs.model.params.use_linfusion}<<<')
+        self.write_log(f'\nLoading Diffusion model from {ckpt_path}...', True)
+        self.write_log(f'>>>use linfusion: {self.configs.model.params.use_linfusion}<<<', True)
         ckpt = torch.load(ckpt_path, map_location=f"cuda:{self.rank}")
         if is_awq_checkpoint_payload(ckpt):
             model, quantized_layers = load_awq_quantized_model_from_payload(
@@ -240,7 +245,7 @@ class BaseSampler:
                 ckpt,
                 device=torch.device(f"cuda:{self.rank}"),
             )
-            self.write_log(f'Loaded AWQ checkpoint with {len(quantized_layers)} quantized linear layers.')
+            self.write_log(f'Loaded AWQ checkpoint with {len(quantized_layers)} quantized linear layers.', True)
         elif 'state_dict' in ckpt:
             util_net.reload_model(model, ckpt['state_dict'])
         else:
@@ -539,7 +544,7 @@ class ResShiftSampler(BaseSampler):
             im_path = out_path / f"{in_path.stem}.png"
             util_image.imwrite(im_sr, im_path, chn='bgr', dtype_in='uint8')
 
-        self.write_log(f"Write Image num: {str(write_image)}")
+        self.write_log(f"Write Image num: {str(write_image)}", True)
 
         if self.profile_inference:
             for line in self.profiler.summary_lines(
@@ -547,7 +552,7 @@ class ResShiftSampler(BaseSampler):
                 prefix="Global profile | ",
                 image_count=self.profiler.global_images,
             ):
-                self.write_log(line)
+                self.write_log(line, True)
 
         self.write_log(f"Processing done, enjoy the results in {str(out_path)}")
 
