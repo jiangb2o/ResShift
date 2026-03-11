@@ -16,6 +16,7 @@ from utils import util_net
 from utils import util_image
 from utils import util_common
 from quantization.awq import is_awq_checkpoint_payload, load_awq_quantized_model_from_payload
+from quantization.hybrid_ptq import is_hybrid_checkpoint_payload, load_hybrid_quantized_model_from_payload
 
 import torch
 import torch.nn.functional as F
@@ -239,7 +240,17 @@ class BaseSampler:
         self.write_log(f'\nLoading Diffusion model from {ckpt_path}...', True)
         self.write_log(f'>>>use linfusion: {self.configs.model.params.use_linfusion}<<<', True)
         ckpt = torch.load(ckpt_path, map_location=f"cuda:{self.rank}")
-        if is_awq_checkpoint_payload(ckpt):
+        if is_hybrid_checkpoint_payload(ckpt):
+            model, awq_layers, int8_layers = load_hybrid_quantized_model_from_payload(
+                model,
+                ckpt,
+                device=torch.device(f"cuda:{self.rank}"),
+            )
+            self.write_log(
+                f'Loaded hybrid PTQ checkpoint with {len(awq_layers)} AWQ linear layers and {len(int8_layers)} INT8 PTQ layers.',
+                True,
+            )
+        elif is_awq_checkpoint_payload(ckpt):
             model, quantized_layers = load_awq_quantized_model_from_payload(
                 model,
                 ckpt,
