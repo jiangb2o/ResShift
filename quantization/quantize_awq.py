@@ -16,6 +16,7 @@ from models.script_util import create_gaussian_diffusion
 from awq import AWQConfig, collect_awq_activations, quantize_model_awq, save_awq_checkpoint
 from calibration import build_calibration_batches
 from utils import util_common, util_net
+from utils.util_opts import str2bool
 
 
 def parse_args() -> argparse.Namespace:
@@ -34,7 +35,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--seed", type=int, default=12345)
     parser.add_argument("--include", type=str, nargs="*", default=["qkv", "proj", "reduction"])
     parser.add_argument("--exclude", type=str, nargs="*", default=[])
-    parser.add_argument("--use_linfusion", action="store_true")
+    parser.add_argument("--use_linfusion", type=str2bool, default="False")
     return parser.parse_args()
 
 

@@ -10,3 +10,4 @@ onnx_inference/outputs/
 quantization/calibration64/
 quantization/calibration128/
 *.pth
+.paper/
