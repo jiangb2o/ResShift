@@ -73,7 +73,8 @@ autoencoder:
 
 # Export settings
 export:
-  ckpt_path: weights/resshift_realsrx4_s15.pth
+  ckpt_path: weights/resshift_realsrx4_s15_linfusion.pth
+  #ckpt_path: weights/resshift_realsrx4_s15.pth
   unet_output_path: onnx_inference/models_linear_attn/resshift_model.onnx    # Output ONNX file path
   encoder_output_path: onnx_inference/models_linear_attn/autoencoder_encoder.onnx
   decoder_output_path: onnx_inference/models_linear_attn/autoencoder_decoder.onnx
