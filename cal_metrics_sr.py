@@ -63,7 +63,7 @@ def tee_output(log_path: Path):
     original_stdout = sys.stdout
     original_stderr = sys.stderr
 
-    with open(log_path, "w", encoding="utf-8") as log_file:
+    with open(log_path, "a", encoding="utf-8") as log_file:
         sys.stdout = TeeStream(original_stdout, log_file)
         sys.stderr = TeeStream(original_stderr, log_file)
         try:
