@@ -309,3 +309,102 @@ Average UNet time per image: 0.1334 s
 Average decoder time per image: 0.0158 s
 Average UNet time per step: 0.008893 s
 Saved SR result(s) to: /home/ubuntu/ResShift/onnx_inference/outputs/runtime_test2
+
+
+====================Log initialized. Logging to: /home/ubuntu/ResShift/onnx_inference/log/inference_log.log====================
+>>>>>UNet ONNX path: onnx_inference/models_linear_attn/hybrid_ptq_unet.onnx<<<<<
+Backend: UNet=onnxruntime, Encoder=onnxruntime, Decoder=onnxruntime
+Model IO names:
+ unet_in=['x', 'lq', 'timesteps'], unet_out=output;
+ enc_in=['image'], enc_out=latent;
+ dec_in=['latent'], dec_out=image
+Warmup enabled: 3 run(s) with synthetic input shape=(1, 3, 64, 64)
+[warmup 1/3] done
+[warmup 2/3] done
+[warmup 3/3] done
+LQ shape: (1, 3, 64, 64), upsampled shape: (1, 3, 256, 256)
+[10/100] (measure) ILSVRC2012_val_00000164.png -> ILSVRC2012_val_00000164.png, total=0.4624 s, encoder=0.0167 s, unet=0.4157 s, decoder=0.0222 s, unet_steps=15
+[20/100] (measure) ILSVRC2012_val_00000244.png -> ILSVRC2012_val_00000244.png, total=0.3387 s, encoder=0.0160 s, unet=0.2945 s, decoder=0.0234 s, unet_steps=15
+[30/100] (measure) ILSVRC2012_val_00000411.png -> ILSVRC2012_val_00000411.png, total=0.4226 s, encoder=0.0136 s, unet=0.3777 s, decoder=0.0256 s, unet_steps=15
+[40/100] (measure) ILSVRC2012_val_00000601.png -> ILSVRC2012_val_00000601.png, total=0.4227 s, encoder=0.0092 s, unet=0.3854 s, decoder=0.0237 s, unet_steps=15
+[50/100] (measure) ILSVRC2012_val_00000835.png -> ILSVRC2012_val_00000835.png, total=0.4022 s, encoder=0.0159 s, unet=0.3579 s, decoder=0.0235 s, unet_steps=15
+[60/100] (measure) ILSVRC2012_val_00001006.png -> ILSVRC2012_val_00001006.png, total=0.4445 s, encoder=0.0094 s, unet=0.3939 s, decoder=0.0228 s, unet_steps=15
+[70/100] (measure) ILSVRC2012_val_00001202.png -> ILSVRC2012_val_00001202.png, total=0.4343 s, encoder=0.0093 s, unet=0.3933 s, decoder=0.0250 s, unet_steps=15
+[80/100] (measure) ILSVRC2012_val_00001373.png -> ILSVRC2012_val_00001373.png, total=0.4443 s, encoder=0.0099 s, unet=0.4035 s, decoder=0.0199 s, unet_steps=15
+[90/100] (measure) ILSVRC2012_val_00001552.png -> ILSVRC2012_val_00001552.png, total=0.4327 s, encoder=0.0140 s, unet=0.3918 s, decoder=0.0227 s, unet_steps=15
+[100/100] (measure) ILSVRC2012_val_00001703.png -> ILSVRC2012_val_00001703.png, total=0.4205 s, encoder=0.0106 s, unet=0.3819 s, decoder=0.0236 s, unet_steps=15
+Processed 100 image(s)
+Measured images (excluding warmup): 100
+Total measured inference time: 42.0961 s
+Average inference time per image: 0.4210 s
+Average encoder time per image: 0.0114 s
+Average UNet time per image: 0.3757 s
+Average decoder time per image: 0.0249 s
+Average UNet time per step: 0.025043 s
+Saved SR result(s) to: /home/ubuntu/ResShift/onnx_inference/outputs/runtime_test2
+
+
+====================Log initialized. Logging to: /home/ubuntu/ResShift/onnx_inference/log/inference_log.log====================
+>>>>>UNet ONNX path: onnx_inference/models_linear_attn/awq_linfusion_unet.onnx<<<<<
+Backend: UNet=onnxruntime, Encoder=onnxruntime, Decoder=onnxruntime
+Model IO names:
+ unet_in=['x', 'lq', 'timesteps'], unet_out=output;
+ enc_in=['image'], enc_out=latent;
+ dec_in=['latent'], dec_out=image
+Warmup enabled: 3 run(s) with synthetic input shape=(1, 3, 64, 64)
+[warmup 1/3] done
+[warmup 2/3] done
+[warmup 3/3] done
+LQ shape: (1, 3, 64, 64), upsampled shape: (1, 3, 256, 256)
+[10/100] (measure) ILSVRC2012_val_00000164.png -> ILSVRC2012_val_00000164.png, total=0.3325 s, encoder=0.0147 s, unet=0.2854 s, decoder=0.0191 s, unet_steps=15
+[20/100] (measure) ILSVRC2012_val_00000244.png -> ILSVRC2012_val_00000244.png, total=0.4232 s, encoder=0.0076 s, unet=0.3875 s, decoder=0.0227 s, unet_steps=15
+[30/100] (measure) ILSVRC2012_val_00000411.png -> ILSVRC2012_val_00000411.png, total=0.4377 s, encoder=0.0092 s, unet=0.3993 s, decoder=0.0238 s, unet_steps=15
+[40/100] (measure) ILSVRC2012_val_00000601.png -> ILSVRC2012_val_00000601.png, total=0.4431 s, encoder=0.0110 s, unet=0.3762 s, decoder=0.0208 s, unet_steps=15
+[50/100] (measure) ILSVRC2012_val_00000835.png -> ILSVRC2012_val_00000835.png, total=0.3518 s, encoder=0.0154 s, unet=0.3111 s, decoder=0.0194 s, unet_steps=15
+[60/100] (measure) ILSVRC2012_val_00001006.png -> ILSVRC2012_val_00001006.png, total=0.4362 s, encoder=0.0105 s, unet=0.3929 s, decoder=0.0273 s, unet_steps=15
+[70/100] (measure) ILSVRC2012_val_00001202.png -> ILSVRC2012_val_00001202.png, total=0.4338 s, encoder=0.0126 s, unet=0.3921 s, decoder=0.0240 s, unet_steps=15
+[80/100] (measure) ILSVRC2012_val_00001373.png -> ILSVRC2012_val_00001373.png, total=0.4429 s, encoder=0.0085 s, unet=0.4039 s, decoder=0.0245 s, unet_steps=15
+[90/100] (measure) ILSVRC2012_val_00001552.png -> ILSVRC2012_val_00001552.png, total=0.4127 s, encoder=0.0091 s, unet=0.3690 s, decoder=0.0299 s, unet_steps=15
+[100/100] (measure) ILSVRC2012_val_00001703.png -> ILSVRC2012_val_00001703.png, total=0.4498 s, encoder=0.0153 s, unet=0.4090 s, decoder=0.0206 s, unet_steps=15
+Processed 100 image(s)
+Measured images (excluding warmup): 100
+Total measured inference time: 40.4134 s
+Average inference time per image: 0.4041 s
+Average encoder time per image: 0.0114 s
+Average UNet time per image: 0.3576 s
+Average decoder time per image: 0.0246 s
+Average UNet time per step: 0.023841 s
+Saved SR result(s) to: /home/ubuntu/ResShift/onnx_inference/outputs/runtime_test2
+
+
+====================Log initialized. Logging to: /home/ubuntu/ResShift/onnx_inference/log/inference_log.log====================
+>>>>>UNet ONNX path: onnx_inference/models_linear_attn/resshift_model.onnx<<<<<
+Backend: UNet=onnxruntime, Encoder=onnxruntime, Decoder=onnxruntime
+Model IO names:
+ unet_in=['x', 'lq', 'timesteps'], unet_out=output;
+ enc_in=['image'], enc_out=latent;
+ dec_in=['latent'], dec_out=image
+Warmup enabled: 3 run(s) with synthetic input shape=(1, 3, 64, 64)
+[warmup 1/3] done
+[warmup 2/3] done
+[warmup 3/3] done
+LQ shape: (1, 3, 64, 64), upsampled shape: (1, 3, 256, 256)
+[10/100] (measure) ILSVRC2012_val_00000164.png -> ILSVRC2012_val_00000164.png, total=0.4371 s, encoder=0.0080 s, unet=0.3971 s, decoder=0.0242 s, unet_steps=15
+[20/100] (measure) ILSVRC2012_val_00000244.png -> ILSVRC2012_val_00000244.png, total=0.4402 s, encoder=0.0080 s, unet=0.4009 s, decoder=0.0267 s, unet_steps=15
+[30/100] (measure) ILSVRC2012_val_00000411.png -> ILSVRC2012_val_00000411.png, total=0.4508 s, encoder=0.0138 s, unet=0.4037 s, decoder=0.0270 s, unet_steps=15
+[40/100] (measure) ILSVRC2012_val_00000601.png -> ILSVRC2012_val_00000601.png, total=0.4891 s, encoder=0.0096 s, unet=0.4409 s, decoder=0.0332 s, unet_steps=15
+[50/100] (measure) ILSVRC2012_val_00000835.png -> ILSVRC2012_val_00000835.png, total=0.4383 s, encoder=0.0082 s, unet=0.4019 s, decoder=0.0237 s, unet_steps=15
+[60/100] (measure) ILSVRC2012_val_00001006.png -> ILSVRC2012_val_00001006.png, total=0.2653 s, encoder=0.0112 s, unet=0.2235 s, decoder=0.0243 s, unet_steps=15
+[70/100] (measure) ILSVRC2012_val_00001202.png -> ILSVRC2012_val_00001202.png, total=0.4378 s, encoder=0.0165 s, unet=0.3908 s, decoder=0.0248 s, unet_steps=15
+[80/100] (measure) ILSVRC2012_val_00001373.png -> ILSVRC2012_val_00001373.png, total=0.4413 s, encoder=0.0097 s, unet=0.4049 s, decoder=0.0211 s, unet_steps=15
+[90/100] (measure) ILSVRC2012_val_00001552.png -> ILSVRC2012_val_00001552.png, total=0.4560 s, encoder=0.0112 s, unet=0.4079 s, decoder=0.0232 s, unet_steps=15
+[100/100] (measure) ILSVRC2012_val_00001703.png -> ILSVRC2012_val_00001703.png, total=0.4463 s, encoder=0.0099 s, unet=0.4003 s, decoder=0.0293 s, unet_steps=15
+Processed 100 image(s)
+Measured images (excluding warmup): 100
+Total measured inference time: 43.5601 s
+Average inference time per image: 0.4356 s
+Average encoder time per image: 0.0116 s
+Average UNet time per image: 0.3884 s
+Average decoder time per image: 0.0256 s
+Average UNet time per step: 0.025891 s
+Saved SR result(s) to: /home/ubuntu/ResShift/onnx_inference/outputs/runtime_test2

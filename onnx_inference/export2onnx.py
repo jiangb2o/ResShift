@@ -6,12 +6,16 @@ import argparse
 from pathlib import Path
 from omegaconf import OmegaConf
 
+
 # Ensure project root is importable when this script is launched by path.
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from utils import util_common, util_net, util_opts
+from utils.util_opts import str2bool
+from quantization.awq import is_awq_checkpoint_payload, load_awq_quantized_model_from_payload
+from quantization.hybrid_ptq import is_hybrid_checkpoint_payload, load_hybrid_quantized_model_from_payload
 
 # Check for onnx module
 try:
@@ -47,6 +51,21 @@ def get_export_parser():
         type=str,
         default="True",
         help="Whether to export the autoencoder encoder/decoder (default: True)",
+    )
+    parser.add_argument(
+        "--checkpoint",
+        type=str,
+        default="weights/resshift_realsrx4_s15.pth",
+    )
+    parser.add_argument(
+        "--use_linfusion",
+        type=str2bool,
+        default="False",
+    )
+    parser.add_argument(
+        "--unet_output_path",
+        type=str,
+        default="",
     )
     args = parser.parse_args()
     return args
@@ -139,6 +158,7 @@ def export_unet(args, configs):
 
     if onnx is None:
         raise ImportError("onnx is not installed. Please run: pip install onnx onnxruntime")
+    export_device = torch.device(f"{args.device}:0" if args.device == "cuda" else "cpu")
     
     # Build model
     print("Building model from config...")
@@ -149,7 +169,27 @@ def export_unet(args, configs):
     # Load checkpoint
     print(f"Loading checkpoint from {ckpt_path}...")
     ckpt = torch.load(ckpt_path, map_location=f"{args.device}:0" if args.device == "cuda" else "cpu")
-    if 'state_dict' in ckpt:
+    if is_hybrid_checkpoint_payload(ckpt):
+        model, awq_layers, int8_layers = load_hybrid_quantized_model_from_payload(
+            model,
+            ckpt,
+            device=export_device,
+            restore_int8_conv=False,
+        )
+        int8_conv_layers = sum(1 for info in int8_layers.values() if info["module_type"] == "conv2d")
+        int8_linear_layers = sum(1 for info in int8_layers.values() if info["module_type"] == "linear")
+        print(
+            f'Loaded hybrid PTQ checkpoint with {len(awq_layers)} AWQ linear layers, '
+            f'{int8_linear_layers} INT8 linear layers, and kept {int8_conv_layers} INT8 conv wrapper layers for export.'
+        )
+    elif is_awq_checkpoint_payload(ckpt):
+        model, quantized_layers = load_awq_quantized_model_from_payload(
+            model,
+            ckpt,
+            device=export_device,
+        )
+        print(f'Loaded AWQ checkpoint with {len(quantized_layers)} quantized linear layers.')
+    elif 'state_dict' in ckpt:
         util_net.reload_model(model, ckpt['state_dict'])
     else:
         util_net.reload_model(model, ckpt)
@@ -326,7 +366,14 @@ def main():
     config_path = Path(args.config).expanduser().resolve()
     configs = OmegaConf.load(str(config_path))
 
+    configs.export.ckpt_path = args.checkpoint
+    configs.model.params.use_linfusion = args.use_linfusion
+    configs.export.unet_output_path = args.unet_output_path
+
     print(f"export args: \ndevice: {args.device}\n export unet: {args.unet}\n export autoencoder: {args.autoencoder}\n")
+    print(f"checkpoint: {args.checkpoint}, use_linfusion: {args.use_linfusion}")
+    print(f"unet_output_path: {args.unet_output_path}")
+
 
     if(util_opts.str2bool(args.unet)):
         print("\n=================exporting Unet Model...=================")
