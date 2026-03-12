@@ -211,3 +211,301 @@ PY'
   - 当前 INT8 PTQ 是 weight-only 路线，不执行原生 INT8 activation/kernel 推理
   - 当前未量化 `LayerNorm`、相对位置偏置等非 `Conv2d/Linear` 参数
   - 数值验证使用的是最小规模校准样本，正式量化应扩大校准集
+  - 当 INT8 `Conv2d` 在 CUDA 下恢复为普通 `fp16 Conv2d` 后，直接裸调 `model(x)` 需要 AMP 或半精度输入；标准 `sampler/inference_resshift.py` 推理路径默认已启用 AMP
+
+## 增量更新：INT8 Conv 恢复为普通 Conv2d
+
+### 目标
+
+将 hybrid checkpoint 中的 INT8 `Conv2d` 在加载时一次性反量化并恢复为普通 `nn.Conv2d`，避免推理阶段继续经过 `INT8Conv2d` wrapper。
+
+### 实现
+
+- 在 `quantization/int8_ptq.py` 中新增：
+  - `restore_int8_conv_modules(model, device, dtype=None)`
+- 在 `quantization/hybrid_ptq.py` 中新增加载参数：
+  - `restore_int8_conv=True`
+- 当前默认行为：
+  - 加载 hybrid checkpoint
+  - 用量化模块承接 state_dict
+  - `model.to(device)`
+  - 将所有 `INT8Conv2d` 一次性反量化并替换为普通 `nn.Conv2d`
+  - 对剩余 `INT8Linear` 仍保留缓存反量化
+- 在 `sampler.py` 中更新日志：
+  - 明确打印恢复成普通 `Conv2d` 的层数
+
+### 验证 1：CPU 下恢复版与 wrapper 版数值一致
+
+- 验证操作：
+```bash
+bash -lc 'export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1; source /home/ubuntu/miniconda3/etc/profile.d/conda.sh && conda activate ResShift && python - <<\"PY\"
+import torch
+from omegaconf import OmegaConf
+from utils import util_common
+from quantization.hybrid_ptq import load_hybrid_quantized_model
+from quantization.int8_ptq import INT8Conv2d
+
+cfg = OmegaConf.load(\"configs/realsr_swinunet_realesrgan256.yaml\")
+device = torch.device(\"cpu\")
+
+model_restore = util_common.instantiate_from_config(cfg.model)
+model_restore, _, _ = load_hybrid_quantized_model(model_restore, \"quantization/artifacts/test_hybrid_ptq.pth\", device, restore_int8_conv=True)
+model_wrap = util_common.instantiate_from_config(cfg.model)
+model_wrap, _, _ = load_hybrid_quantized_model(model_wrap, \"quantization/artifacts/test_hybrid_ptq.pth\", device, restore_int8_conv=False)
+
+x = torch.randn(1, 3, 64, 64)
+lq = torch.randn(1, 3, 64, 64)
+t = torch.tensor([10], dtype=torch.long)
+with torch.no_grad():
+    out_restore = model_restore(x=x, timesteps=t, lq=lq, mask=None)
+    out_wrap = model_wrap(x=x, timesteps=t, lq=lq, mask=None)
+diff = (out_restore - out_wrap).abs()
+print(\"int8_conv_restore_count\", sum(1 for m in model_restore.modules() if isinstance(m, INT8Conv2d)))
+print(\"int8_conv_wrapper_count\", sum(1 for m in model_wrap.modules() if isinstance(m, INT8Conv2d)))
+print(\"max_abs_diff\", diff.max().item())
+print(\"mean_abs_diff\", diff.mean().item())
+PY'
+```
+- 验证输出摘要：
+  - `int8_conv_restore_count 0`
+  - `int8_conv_wrapper_count 120`
+  - `max_abs_diff 0.0`
+  - `mean_abs_diff 0.0`
+- 结果：通过
+
+### 验证 2：真实 CUDA 下恢复版比 wrapper 版更快
+
+- 验证操作：
+```bash
+bash -lc 'source /home/ubuntu/miniconda3/etc/profile.d/conda.sh && conda activate ResShift && export CUDA_VISIBLE_DEVICES=6 && python - <<\"PY\"
+import time
+import torch
+from omegaconf import OmegaConf
+from utils import util_common
+from quantization.hybrid_ptq import load_hybrid_quantized_model
+from quantization.int8_ptq import INT8Conv2d
+
+cfg = OmegaConf.load(\"configs/realsr_swinunet_realesrgan256.yaml\")
+device = torch.device(\"cuda\")
+
+def load_model(restore):
+    model = util_common.instantiate_from_config(cfg.model)
+    model, _, _ = load_hybrid_quantized_model(
+        model,
+        \"quantization/artifacts/test_hybrid_ptq.pth\",
+        device,
+        restore_int8_conv=restore,
+    )
+    return model
+
+model_restore = load_model(True)
+model_wrap = load_model(False)
+
+x = torch.randn(1, 3, 64, 64, device=device)
+lq = torch.randn(1, 3, 64, 64, device=device)
+t = torch.tensor([10], dtype=torch.long, device=device)
+
+for _ in range(3):
+    with torch.no_grad(), torch.cuda.amp.autocast():
+        model_restore(x=x, timesteps=t, lq=lq, mask=None)
+        model_wrap(x=x, timesteps=t, lq=lq, mask=None)
+torch.cuda.synchronize()
+
+def bench(model, iters=20):
+    torch.cuda.synchronize()
+    start = time.perf_counter()
+    with torch.no_grad(), torch.cuda.amp.autocast():
+        for _ in range(iters):
+            out = model(x=x, timesteps=t, lq=lq, mask=None)
+    torch.cuda.synchronize()
+    return (time.perf_counter() - start) * 1000.0 / iters, out
+
+ms_restore, out_restore = bench(model_restore)
+ms_wrap, out_wrap = bench(model_wrap)
+diff = (out_restore.float() - out_wrap.float()).abs()
+print(\"cuda_restore_conv_wrappers\", sum(1 for m in model_restore.modules() if isinstance(m, INT8Conv2d)))
+print(\"cuda_wrap_conv_wrappers\", sum(1 for m in model_wrap.modules() if isinstance(m, INT8Conv2d)))
+print(\"restore_ms\", round(ms_restore, 3))
+print(\"wrap_ms\", round(ms_wrap, 3))
+print(\"speedup\", round(ms_wrap / ms_restore, 4))
+print(\"max_abs_diff\", diff.max().item())
+print(\"mean_abs_diff\", diff.mean().item())
+PY'
+```
+- 验证输出摘要：
+  - `cuda_restore_conv_wrappers 0`
+  - `cuda_wrap_conv_wrappers 120`
+  - `restore_ms 26.676`
+  - `wrap_ms 29.532`
+  - `speedup 1.1071`
+  - `max_abs_diff 0.001708984375`
+  - `mean_abs_diff 0.00030418415553867817`
+- 结果：通过
+
+### 验证 3：真实 sampler CUDA 加载路径已使用恢复版 Conv2d
+
+- 验证操作：
+```bash
+bash -lc 'source /home/ubuntu/miniconda3/etc/profile.d/conda.sh && conda activate ResShift && export CUDA_VISIBLE_DEVICES=6 && python - <<\"PY\"
+import torch
+from omegaconf import OmegaConf
+from sampler import ResShiftSampler
+from quantization.int8_ptq import INT8Conv2d, INT8Linear
+from quantization.awq import AWQLinear
+
+cfg = OmegaConf.load(\"configs/realsr_swinunet_realesrgan256.yaml\")
+cfg.model.ckpt_path = \"quantization/artifacts/test_hybrid_ptq.pth\"
+sampler = ResShiftSampler(
+    configs=cfg,
+    sf=4,
+    use_amp=True,
+    chop_size=64,
+    chop_stride=64,
+    chop_bs=1,
+    seed=123,
+    profile_inference=False,
+)
+with torch.no_grad(), torch.cuda.amp.autocast():
+    x = torch.randn(1, 3, 64, 64, device=\"cuda\")
+    lq = torch.randn(1, 3, 64, 64, device=\"cuda\")
+    t = torch.tensor([10], dtype=torch.long, device=\"cuda\")
+    out = sampler.model(x=x, timesteps=t, lq=lq, mask=None)
+print(
+    \"sampler_restore_ok\",
+    tuple(out.shape),
+    out.dtype,
+    bool(torch.isfinite(out).all().item()),
+    sum(1 for m in sampler.model.modules() if isinstance(m, AWQLinear)),
+    sum(1 for m in sampler.model.modules() if isinstance(m, INT8Linear)),
+    sum(1 for m in sampler.model.modules() if isinstance(m, INT8Conv2d)),
+)
+PY'
+```
+- 验证输出摘要：
+  - `Loaded hybrid PTQ checkpoint with 36 AWQ linear layers, 24 INT8 linear layers, and restored 120 INT8 conv layers to plain Conv2d.`
+  - `sampler_restore_ok (1, 3, 64, 64) torch.float16 True 36 24 0`
+- 结果：通过
+
+## 增量更新：`with_awq` 开关
+
+### 目标
+
+为 hybrid 量化脚本增加 `with_awq` 布尔选项：
+
+- `with_awq=True`
+  - 保持当前行为
+  - 先执行 AWQ，再对剩余层做 INT8 PTQ
+- `with_awq=False`
+  - 不执行 AWQ 量化流程
+  - 不收集 AWQ 激活
+  - 不构建 AWQ 所需校准样本
+  - 所有 `Conv2d + Linear` 全部走 INT8 PTQ
+
+### 实现
+
+- 在 `quantization/quantize_hybrid_ptq.py` 中新增：
+  - `--with_awq`
+- 当 `with_awq=False` 时：
+  - `--calibration_dir` 不再是必填
+  - 跳过 `autoencoder` 加载
+  - 跳过 `diffusion` 构建
+  - 跳过 `build_calibration_batches()`
+  - 跳过 `collect_awq_activations()`
+- 在 `quantization/hybrid_ptq.py` 中：
+  - `quantize_model_hybrid(..., with_awq: bool = True)`
+  - `save_hybrid_checkpoint(..., with_awq: bool)`
+  - payload 中新增：
+    - `with_awq`
+
+### 验证 1：纯 INT8 PTQ 导出
+
+- 验证操作：
+```bash
+bash -lc 'export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1; source /home/ubuntu/miniconda3/etc/profile.d/conda.sh && conda activate ResShift && python quantization/quantize_hybrid_ptq.py --config configs/realsr_swinunet_realesrgan256.yaml --checkpoint weights/resshift_realsrx4_s15_v1_default.pth --output quantization/artifacts/test_int8_only_ptq.pth --device cpu --with_awq False --quantize_conv True --quantize_linear True --use_linfusion True'
+```
+- 验证输出摘要：
+  - `calibration_batches 0`
+  - `collected_awq_layers 0`
+  - `quantized_awq_layers 0`
+  - `quantized_int8_layers 180`
+  - `saved_to /home/ubuntu/ResShift/quantization/artifacts/test_int8_only_ptq.pth`
+- 结果：通过
+
+### 验证 2：checkpoint payload 确认
+
+- 验证操作：
+```bash
+bash -lc 'source /home/ubuntu/miniconda3/etc/profile.d/conda.sh && conda activate ResShift && python - <<\"PY\"
+import torch
+payload = torch.load(\"quantization/artifacts/test_int8_only_ptq.pth\", map_location=\"cpu\")
+print(\"format\", payload[\"format\"])
+print(\"with_awq\", payload[\"with_awq\"])
+print(\"awq_layers\", len(payload[\"awq_layers\"]))
+print(\"int8_layers\", len(payload[\"int8_layers\"]))
+PY'
+```
+- 验证输出摘要：
+  - `format reshift-hybrid-ptq-v1`
+  - `with_awq False`
+  - `awq_layers 0`
+  - `int8_layers 180`
+- 结果：通过
+
+### 验证 3：CPU 加载与前向
+
+- 验证操作：
+```bash
+bash -lc 'export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1; source /home/ubuntu/miniconda3/etc/profile.d/conda.sh && conda activate ResShift && python quantization/verify_hybrid_ptq.py --config configs/realsr_swinunet_realesrgan256.yaml --checkpoint quantization/artifacts/test_int8_only_ptq.pth --reference_checkpoint weights/resshift_realsrx4_s15_v1_default.pth --device cpu'
+```
+- 验证输出摘要：
+  - `loaded_awq_layers 0`
+  - `loaded_int8_layers 180`
+  - `module_counts awq=0 int8_linear=60 int8_conv=0`
+  - `forward_ok (1, 3, 64, 64) torch.float32 True`
+  - `max_abs_diff 0.04266566038131714`
+  - `mean_abs_diff 0.006817747373133898`
+- 结果：通过
+
+### 验证 4：真实 sampler CUDA 加载
+
+- 验证操作：
+```bash
+bash -lc 'source /home/ubuntu/miniconda3/etc/profile.d/conda.sh && conda activate ResShift && export CUDA_VISIBLE_DEVICES=6 && python - <<\"PY\"
+import torch
+from omegaconf import OmegaConf
+from sampler import ResShiftSampler
+from quantization.int8_ptq import INT8Conv2d, INT8Linear
+from quantization.awq import AWQLinear
+
+cfg = OmegaConf.load(\"configs/realsr_swinunet_realesrgan256.yaml\")
+cfg.model.ckpt_path = \"quantization/artifacts/test_int8_only_ptq.pth\"
+sampler = ResShiftSampler(
+    configs=cfg,
+    sf=4,
+    use_amp=True,
+    chop_size=64,
+    chop_stride=64,
+    chop_bs=1,
+    seed=123,
+    profile_inference=False,
+)
+with torch.no_grad(), torch.cuda.amp.autocast():
+    x = torch.randn(1, 3, 64, 64, device=\"cuda\")
+    lq = torch.randn(1, 3, 64, 64, device=\"cuda\")
+    t = torch.tensor([10], dtype=torch.long, device=\"cuda\")
+    out = sampler.model(x=x, timesteps=t, lq=lq, mask=None)
+print(
+    \"sampler_int8_only_ok\",
+    tuple(out.shape),
+    out.dtype,
+    bool(torch.isfinite(out).all().item()),
+    sum(1 for m in sampler.model.modules() if isinstance(m, AWQLinear)),
+    sum(1 for m in sampler.model.modules() if isinstance(m, INT8Linear)),
+    sum(1 for m in sampler.model.modules() if isinstance(m, INT8Conv2d)),
+)
+PY'
+```
+- 验证输出摘要：
+  - `Loaded hybrid PTQ checkpoint with 0 AWQ linear layers, 60 INT8 linear layers, and restored 120 INT8 conv layers to plain Conv2d.`
+  - `sampler_int8_only_ok (1, 3, 64, 64) torch.float16 True 0 60 0`
+- 结果：通过

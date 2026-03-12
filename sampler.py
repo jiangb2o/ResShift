@@ -246,8 +246,13 @@ class BaseSampler:
                 ckpt,
                 device=torch.device(f"cuda:{self.rank}"),
             )
+            int8_conv_layers = sum(1 for info in int8_layers.values() if info["module_type"] == "conv2d")
+            int8_linear_layers = sum(1 for info in int8_layers.values() if info["module_type"] == "linear")
             self.write_log(
-                f'Loaded hybrid PTQ checkpoint with {len(awq_layers)} AWQ linear layers and {len(int8_layers)} INT8 PTQ layers.',
+                (
+                    f'Loaded hybrid PTQ checkpoint with {len(awq_layers)} AWQ linear layers, '
+                    f'{int8_linear_layers} INT8 linear layers, and restored {int8_conv_layers} INT8 conv layers to plain Conv2d.'
+                ),
                 True,
             )
         elif is_awq_checkpoint_payload(ckpt):

@@ -6,7 +6,14 @@ import torch
 import torch.nn as nn
 
 from quantization.awq import AWQConfig, AWQLinear, materialize_awq_caches, quantize_model_awq
-from quantization.int8_ptq import INT8PTQConfig, INT8Conv2d, INT8Linear, materialize_int8_caches, quantize_model_int8_ptq
+from quantization.int8_ptq import (
+    INT8PTQConfig,
+    INT8Conv2d,
+    INT8Linear,
+    materialize_int8_caches,
+    quantize_model_int8_ptq,
+    restore_int8_conv_modules,
+)
 
 
 def _get_parent_module(model: nn.Module, module_name: str) -> Tuple[nn.Module, str]:
@@ -19,11 +26,18 @@ def _get_parent_module(model: nn.Module, module_name: str) -> Tuple[nn.Module, s
 
 def quantize_model_hybrid(
     model: nn.Module,
-    activation_map: Dict[str, torch.Tensor],
+    activation_map: Dict[str, torch.Tensor] | None,
     awq_config: AWQConfig,
     int8_config: INT8PTQConfig,
+    with_awq: bool = True,
 ) -> Tuple[nn.Module, Dict[str, Dict[str, object]], Dict[str, Dict[str, object]]]:
-    awq_model, awq_metadata = quantize_model_awq(model, activation_map, awq_config)
+    if with_awq:
+        if activation_map is None:
+            raise ValueError("activation_map is required when with_awq=True")
+        awq_model, awq_metadata = quantize_model_awq(model, activation_map, awq_config)
+    else:
+        awq_model = model
+        awq_metadata = {}
     hybrid_model, int8_metadata = quantize_model_int8_ptq(awq_model, int8_config, skip_names=awq_metadata.keys())
     return hybrid_model, awq_metadata, int8_metadata
 
@@ -36,9 +50,11 @@ def save_hybrid_checkpoint(
     awq_config: AWQConfig,
     int8_config: INT8PTQConfig,
     source_config_path: str,
+    with_awq: bool,
 ) -> None:
     payload = {
         "format": "reshift-hybrid-ptq-v1",
+        "with_awq": bool(with_awq),
         "awq_config": awq_config.to_dict(),
         "int8_config": int8_config.to_dict(),
         "model_state": quantized_model.state_dict(),
@@ -101,6 +117,7 @@ def load_hybrid_quantized_model_from_payload(
     payload: Dict[str, object],
     device: torch.device,
     dequant_mode: str = "cached",
+    restore_int8_conv: bool = True,
 ) -> Tuple[nn.Module, Dict[str, Dict[str, object]], Dict[str, Dict[str, object]]]:
     if not is_hybrid_checkpoint_payload(payload):
         raise ValueError(f"Unsupported hybrid checkpoint format: {payload.get('format')}")
@@ -115,6 +132,8 @@ def load_hybrid_quantized_model_from_payload(
     filtered_state = {key: value for key, value in payload_state.items() if key in current_state}
     model.load_state_dict(filtered_state, strict=False)
     model.to(device)
+    if restore_int8_conv:
+        restore_int8_conv_modules(model, device)
     if dequant_mode == "cached":
         materialize_awq_caches(model, device)
         materialize_int8_caches(model, device)
@@ -127,6 +146,13 @@ def load_hybrid_quantized_model(
     checkpoint_path: str,
     device: torch.device,
     dequant_mode: str = "cached",
+    restore_int8_conv: bool = True,
 ) -> Tuple[nn.Module, Dict[str, Dict[str, object]], Dict[str, Dict[str, object]]]:
     payload = torch.load(checkpoint_path, map_location="cpu")
-    return load_hybrid_quantized_model_from_payload(model, payload, device, dequant_mode=dequant_mode)
+    return load_hybrid_quantized_model_from_payload(
+        model,
+        payload,
+        device,
+        dequant_mode=dequant_mode,
+        restore_int8_conv=restore_int8_conv,
+    )

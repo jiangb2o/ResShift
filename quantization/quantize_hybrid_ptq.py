@@ -25,7 +25,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Quantize ResShift UNet with AWQ + INT8 PTQ.")
     parser.add_argument("--config", type=str, default="configs/realsr_swinunet_realesrgan256.yaml")
     parser.add_argument("--checkpoint", type=str, default="weights/resshift_realsrx4_s15_v1_default.pth")
-    parser.add_argument("--calibration_dir", type=str, required=True)
+    parser.add_argument("--calibration_dir", type=str, default="")
     parser.add_argument("--output", type=str, required=True)
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--num_images", type=int, default=8)
@@ -41,6 +41,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--int8_exclude", type=str, nargs="*", default=[])
     parser.add_argument("--quantize_conv", type=str2bool, default="True")
     parser.add_argument("--quantize_linear", type=str2bool, default="True")
+    parser.add_argument("--with_awq", type=str2bool, default="True")
     parser.add_argument("--use_linfusion", type=str2bool, default="False")
     return parser.parse_args()
 
@@ -60,25 +61,32 @@ def main() -> None:
     state_dict = ckpt["state_dict"] if "state_dict" in ckpt else ckpt
     util_net.reload_model(model, state_dict)
 
-    autoencoder = util_common.instantiate_from_config(cfg.autoencoder).to(device).eval()
-    ae_ckpt = torch.load((PROJECT_ROOT / cfg.autoencoder.ckpt_path).resolve(), map_location=device)
-    ae_state = ae_ckpt["state_dict"] if "state_dict" in ae_ckpt else ae_ckpt
-    util_net.reload_model(autoencoder, ae_state)
+    calibration_batches = None
+    if bool(args.with_awq):
+        if not args.calibration_dir:
+            raise ValueError("--calibration_dir is required when --with_awq True")
 
-    diffusion = create_gaussian_diffusion(**cfg.diffusion.params)
-    calibration_batches = build_calibration_batches(
-        image_dir=str((PROJECT_ROOT / args.calibration_dir).resolve()),
-        diffusion=diffusion,
-        autoencoder=autoencoder,
-        lq_size=int(cfg.model.params.get("lq_size", 64)),
-        sf=int(cfg.diffusion.params.get("sf", 4)),
-        scale_factor=float(cfg.diffusion.params.get("scale_factor", 1.0)),
-        num_images=args.num_images,
-        samples_per_image=args.samples_per_image,
-        device=device,
-        seed=args.seed,
-    )
-    print(f"calibration_batches {len(calibration_batches)}")
+        autoencoder = util_common.instantiate_from_config(cfg.autoencoder).to(device).eval()
+        ae_ckpt = torch.load((PROJECT_ROOT / cfg.autoencoder.ckpt_path).resolve(), map_location=device)
+        ae_state = ae_ckpt["state_dict"] if "state_dict" in ae_ckpt else ae_ckpt
+        util_net.reload_model(autoencoder, ae_state)
+
+        diffusion = create_gaussian_diffusion(**cfg.diffusion.params)
+        calibration_batches = build_calibration_batches(
+            image_dir=str((PROJECT_ROOT / args.calibration_dir).resolve()),
+            diffusion=diffusion,
+            autoencoder=autoencoder,
+            lq_size=int(cfg.model.params.get("lq_size", 64)),
+            sf=int(cfg.diffusion.params.get("sf", 4)),
+            scale_factor=float(cfg.diffusion.params.get("scale_factor", 1.0)),
+            num_images=args.num_images,
+            samples_per_image=args.samples_per_image,
+            device=device,
+            seed=args.seed,
+        )
+        print(f"calibration_batches {len(calibration_batches)}")
+    else:
+        print("calibration_batches 0")
 
     awq_config = AWQConfig(
         n_bits=args.w_bits,
@@ -96,14 +104,19 @@ def main() -> None:
         exclude_patterns=tuple(args.int8_exclude),
     )
 
-    activation_map = collect_awq_activations(model, calibration_batches, awq_config, device)
-    print(f"collected_awq_layers {len(activation_map)}")
+    activation_map = None
+    if bool(args.with_awq):
+        activation_map = collect_awq_activations(model, calibration_batches, awq_config, device)
+        print(f"collected_awq_layers {len(activation_map)}")
+    else:
+        print("collected_awq_layers 0")
 
     quantized_model, awq_metadata, int8_metadata = quantize_model_hybrid(
         model,
         activation_map,
         awq_config,
         int8_config,
+        with_awq=bool(args.with_awq),
     )
     output_path = (PROJECT_ROOT / args.output).resolve()
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -115,6 +128,7 @@ def main() -> None:
         awq_config,
         int8_config,
         args.config,
+        with_awq=bool(args.with_awq),
     )
     print(f"quantized_awq_layers {len(awq_metadata)}")
     print(f"quantized_int8_layers {len(int8_metadata)}")

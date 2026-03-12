@@ -317,3 +317,34 @@ def materialize_int8_caches(model: nn.Module, device: torch.device) -> None:
     for module in model.modules():
         if isinstance(module, (INT8Linear, INT8Conv2d)):
             module.materialize_cache(device=device, dtype=target_dtype)
+
+
+def restore_int8_conv_modules(
+    model: nn.Module,
+    device: torch.device,
+    dtype: torch.dtype | None = None,
+) -> int:
+    target_dtype = dtype if dtype is not None else (torch.float16 if device.type == "cuda" else torch.float32)
+    restored = 0
+    for name, module in list(model.named_modules()):
+        if not isinstance(module, INT8Conv2d):
+            continue
+        conv = nn.Conv2d(
+            in_channels=module.in_channels,
+            out_channels=module.out_channels,
+            kernel_size=module.kernel_size,
+            stride=module.stride,
+            padding=module.padding,
+            dilation=module.dilation,
+            groups=module.groups,
+            bias=module.bias is not None,
+            padding_mode=module.padding_mode,
+        ).to(device=device, dtype=target_dtype)
+        with torch.no_grad():
+            conv.weight.copy_(module._dequantize_weight().to(device=device, dtype=target_dtype))
+            if module.bias is not None:
+                conv.bias.copy_(module.bias.to(device=device, dtype=target_dtype))
+        parent, child_name = _get_parent_module(model, name)
+        setattr(parent, child_name, conv)
+        restored += 1
+    return restored

@@ -37,6 +37,7 @@ def main() -> None:
         model,
         str((PROJECT_ROOT / args.checkpoint).resolve()),
         device,
+        restore_int8_conv=True,
     )
 
     ref_out = None
@@ -52,9 +53,15 @@ def main() -> None:
         x = torch.randn(1, 3, 64, 64, device=device)
         lq = torch.randn(1, 3, 64, 64, device=device)
         t = torch.tensor([10], dtype=torch.long, device=device)
-        out = model(x=x, timesteps=t, lq=lq, mask=None)
-        if ref_model is not None:
-            ref_out = ref_model(x=x, timesteps=t, lq=lq, mask=None)
+        if device.type == "cuda":
+            with torch.cuda.amp.autocast():
+                out = model(x=x, timesteps=t, lq=lq, mask=None)
+                if ref_model is not None:
+                    ref_out = ref_model(x=x, timesteps=t, lq=lq, mask=None)
+        else:
+            out = model(x=x, timesteps=t, lq=lq, mask=None)
+            if ref_model is not None:
+                ref_out = ref_model(x=x, timesteps=t, lq=lq, mask=None)
 
     num_awq_modules = sum(1 for m in model.modules() if isinstance(m, AWQLinear))
     num_int8_linear = sum(1 for m in model.modules() if isinstance(m, INT8Linear))
