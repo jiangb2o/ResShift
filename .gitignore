@@ -6,6 +6,7 @@ result/
 weights/
 onnx_inference/models/
 onnx_inference/outputs/
+onnx_inference/outputs_trt/
 *.onnx
 quantization/calibration64/
 quantization/calibration128/

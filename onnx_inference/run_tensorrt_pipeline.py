@@ -2,9 +2,11 @@
 from __future__ import annotations
 
 import argparse
+import logging
 import sys
+import time
 from pathlib import Path
-from typing import Tuple
+from typing import Dict, Tuple
 
 import cv2
 import numpy as np
@@ -19,6 +21,24 @@ if str(PROJECT_ROOT) not in sys.path:
 from onnx_inference.tensorrt_runner import TensorRTRunner
 from models.gaussian_diffusion import ModelMeanType
 from models.script_util import create_gaussian_diffusion
+
+
+class _Log:
+    def __init__(self, file_path: Path):
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        self._logger = logging.getLogger("tensorrt_inference")
+        self._logger.setLevel(logging.INFO)
+        self._logger.propagate = False
+        self._logger.handlers.clear()
+
+        console_handler = logging.StreamHandler(sys.stdout)
+        file_handler = logging.FileHandler(file_path, encoding="utf-8")
+        self._logger.addHandler(console_handler)
+        self._logger.addHandler(file_handler)
+        self.print(f"\n\n====================Log initialized. Logging to: {file_path}====================")
+
+    def print(self, message: str) -> None:
+        self._logger.info(message)
 
 
 def parse_args() -> argparse.Namespace:
@@ -39,10 +59,16 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default="onnx_inference/engines/autoencoder_decoder.engine",
     )
-    parser.add_argument("--input", type=str, required=True)
-    parser.add_argument("--output", type=str, required=True)
+    parser.add_argument("--input", type=str, required=True, help="Input image path or folder.")
+    parser.add_argument("--output", type=str, required=True, help="Output image path or folder.")
     parser.add_argument("--device", type=str, default="cuda:0")
     parser.add_argument("--seed", type=int, default=12345)
+    parser.add_argument(
+        "--warmup_images",
+        type=int,
+        default=3,
+        help="Number of synthetic warmup runs excluded from timing stats.",
+    )
     return parser.parse_args()
 
 
@@ -84,9 +110,9 @@ def scale_input(x: torch.Tensor, t_index: int, diffusion) -> torch.Tensor:
     return x / inputs_max
 
 
-def infer_single_image(
-    image_path: Path,
-    output_path: Path,
+def _run_pipeline_from_lq(
+    y0_raw: torch.Tensor,
+    image_label: str,
     encoder: TensorRTRunner,
     unet: TensorRTRunner,
     decoder: TensorRTRunner,
@@ -95,9 +121,8 @@ def infer_single_image(
     sf: int,
     scale_factor: float,
     lq_size: int,
-) -> None:
-    y0 = preprocess_image(image_path)
-    y0, (pad_h, pad_w), padded = pad_to_multiple(y0, lq_size)
+) -> Tuple[torch.Tensor, Dict[str, float]]:
+    y0, (pad_h, pad_w), padded = pad_to_multiple(y0_raw, lq_size)
     y_up = F.interpolate(y0, scale_factor=sf, mode="bicubic")
 
     unet_shape = unet.get_tensor_shapes()["x"]
@@ -105,25 +130,30 @@ def infer_single_image(
     if (y0.shape[2], y0.shape[3]) != (expected_h, expected_w):
         raise RuntimeError(
             f"Current UNet engine expects latent/LQ shape {(expected_h, expected_w)}, "
-            f"but padded input for `{image_path.name}` is {(int(y0.shape[2]), int(y0.shape[3]))}. "
+            f"but padded input for `{image_label}` is {(int(y0.shape[2]), int(y0.shape[3]))}. "
             "Rebuild the UNet engine with matching profile, or use an input that pads to this size."
         )
 
+    encoder_begin = time.perf_counter()
     z_y = encoder.run({"image": y_up.numpy().astype(np.float32)})
+    encoder_elapsed = time.perf_counter() - encoder_begin
     z_y = torch.from_numpy(z_y).float() * scale_factor
 
     t_last = diffusion.num_timesteps - 1
     z_t = z_y + float(diffusion.kappa * diffusion.sqrt_etas[t_last]) * torch.randn_like(z_y)
     model_mean_type = diffusion.model_mean_type
 
-    for i in list(range(diffusion.num_timesteps))[::-1]:
+    unet_elapsed = 0.0
+    indices = list(range(diffusion.num_timesteps))[::-1]
+    for i in indices:
         model_t = timestep_map[i] if timestep_map is not None else i
         t_in = np.full((z_t.shape[0],), model_t, dtype=np.int64)
         x_in = scale_input(z_t, i, diffusion).numpy().astype(np.float32)
         lq_in = y0.numpy().astype(np.float32)
-        model_out = torch.from_numpy(
-            unet.run({"x": x_in, "lq": lq_in, "timesteps": t_in})
-        ).float()
+
+        unet_begin = time.perf_counter()
+        model_out = torch.from_numpy(unet.run({"x": x_in, "lq": lq_in, "timesteps": t_in})).float()
+        unet_elapsed += time.perf_counter() - unet_begin
 
         if model_mean_type == ModelMeanType.START_X:
             pred_xstart = model_out
@@ -152,7 +182,9 @@ def infer_single_image(
         else:
             z_t = mean
 
+    decoder_begin = time.perf_counter()
     sr = decoder.run({"latent": (z_t / max(scale_factor, 1e-8)).numpy().astype(np.float32)})
+    decoder_elapsed = time.perf_counter() - decoder_begin
     sr_tensor = torch.from_numpy(sr).float().clamp(-1.0, 1.0)
 
     if padded:
@@ -160,13 +192,18 @@ def infer_single_image(
         w0 = int(y0.shape[3]) - pad_w
         sr_tensor = sr_tensor[:, :, : h0 * sf, : w0 * sf]
 
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    cv2.imwrite(str(output_path), postprocess_image(sr_tensor))
-    print(f"Saved SR result to: {output_path}")
+    profile = {
+        "encoder": encoder_elapsed,
+        "unet": unet_elapsed,
+        "decoder": decoder_elapsed,
+        "unet_steps": len(indices),
+    }
+    return sr_tensor, profile
 
 
 def main() -> None:
     args = parse_args()
+    log = _Log((PROJECT_ROOT / "onnx_inference/log/tensorrt_log.log").resolve())
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
 
@@ -181,6 +218,17 @@ def main() -> None:
     unet = TensorRTRunner((PROJECT_ROOT / args.unet_engine).resolve(), device=args.device)
     decoder = TensorRTRunner((PROJECT_ROOT / args.decoder_engine).resolve(), device=args.device)
 
+    log.print(f"Device: {args.device}")
+    log.print(f"Encoder engine: {encoder.engine_path}")
+    log.print(f"UNet engine: {unet.engine_path}")
+    log.print(f"Decoder engine: {decoder.engine_path}")
+    log.print(
+        "Engine tensor shapes:\n"
+        f" encoder={encoder.get_tensor_shapes()}\n"
+        f" unet={unet.get_tensor_shapes()}\n"
+        f" decoder={decoder.get_tensor_shapes()}"
+    )
+
     input_path = (PROJECT_ROOT / args.input).resolve()
     output_path = (PROJECT_ROOT / args.output).resolve()
 
@@ -192,10 +240,29 @@ def main() -> None:
         if not image_paths:
             raise FileNotFoundError(f"No images found in folder: {input_path}")
         output_path.mkdir(parents=True, exist_ok=True)
-        for image_path in image_paths:
-            infer_single_image(
-                image_path=image_path,
-                output_path=output_path / image_path.name,
+    else:
+        if not input_path.exists():
+            raise FileNotFoundError(f"Input image not found: {input_path}")
+        image_paths = [input_path]
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    total_elapsed = 0.0
+    total_encoder_elapsed = 0.0
+    total_unet_elapsed = 0.0
+    total_decoder_elapsed = 0.0
+    total_unet_steps = 0
+    measured_images = 0
+    total_images = len(image_paths)
+    warmup_images = max(0, int(args.warmup_images))
+
+    if warmup_images > 0:
+        first_shape = preprocess_image(image_paths[0]).shape
+        warmup_lq = torch.randn(first_shape, dtype=torch.float32)
+        log.print(f"Warmup enabled: {warmup_images} run(s) with synthetic input shape={tuple(first_shape)}")
+        for i in range(warmup_images):
+            _run_pipeline_from_lq(
+                y0_raw=warmup_lq,
+                image_label=f"warmup_{i+1}",
                 encoder=encoder,
                 unet=unet,
                 decoder=decoder,
@@ -205,22 +272,67 @@ def main() -> None:
                 scale_factor=scale_factor,
                 lq_size=lq_size,
             )
-        return
+            log.print(f"[warmup {i + 1}/{warmup_images}] done")
 
-    if not input_path.exists():
-        raise FileNotFoundError(f"Input image not found: {input_path}")
-    infer_single_image(
-        image_path=input_path,
-        output_path=output_path,
-        encoder=encoder,
-        unet=unet,
-        decoder=decoder,
-        diffusion=diffusion,
-        timestep_map=timestep_map,
-        sf=sf,
-        scale_factor=scale_factor,
-        lq_size=lq_size,
-    )
+    for idx, image_path in enumerate(image_paths, start=1):
+        y0_raw = preprocess_image(image_path)
+
+        if idx == 1:
+            y0_show, _, _ = pad_to_multiple(y0_raw, lq_size)
+            y_up_show = F.interpolate(y0_show, scale_factor=sf, mode="bicubic")
+            log.print(f"LQ shape: {tuple(y0_show.shape)}, upsampled shape: {tuple(y_up_show.shape)}")
+
+        begin_time = time.perf_counter()
+        sr_tensor, profile = _run_pipeline_from_lq(
+            y0_raw=y0_raw,
+            image_label=image_path.name,
+            encoder=encoder,
+            unet=unet,
+            decoder=decoder,
+            diffusion=diffusion,
+            timestep_map=timestep_map,
+            sf=sf,
+            scale_factor=scale_factor,
+            lq_size=lq_size,
+        )
+        elapsed_time = time.perf_counter() - begin_time
+
+        if input_path.is_dir():
+            current_output = output_path / image_path.name
+        else:
+            current_output = output_path
+        current_output.parent.mkdir(parents=True, exist_ok=True)
+        cv2.imwrite(str(current_output), postprocess_image(sr_tensor))
+
+        total_elapsed += elapsed_time
+        total_encoder_elapsed += profile["encoder"]
+        total_unet_elapsed += profile["unet"]
+        total_decoder_elapsed += profile["decoder"]
+        total_unet_steps += int(profile["unet_steps"])
+        measured_images += 1
+
+        if(idx % (total_images / 10) == 0):
+            log.print(
+                f"[{idx}/{total_images}] {image_path.name} -> {current_output.name}, "
+                f"total={elapsed_time:.4f} s, encoder={profile['encoder']:.4f} s, "
+                f"unet={profile['unet']:.4f} s, decoder={profile['decoder']:.4f} s, "
+                f"unet_steps={int(profile['unet_steps'])}"
+            )
+
+    avg_time = total_elapsed / max(measured_images, 1)
+    avg_encoder_time = total_encoder_elapsed / max(measured_images, 1)
+    avg_unet_time = total_unet_elapsed / max(measured_images, 1)
+    avg_decoder_time = total_decoder_elapsed / max(measured_images, 1)
+    avg_unet_step_time = total_unet_elapsed / max(total_unet_steps, 1)
+    log.print(f"Processed {total_images} image(s)")
+    log.print(f"Measured images (excluding warmup): {measured_images}")
+    log.print(f"Total measured inference time: {total_elapsed:.4f} s")
+    log.print(f"Average inference time per image: {avg_time:.4f} s")
+    log.print(f"Average encoder time per image: {avg_encoder_time:.4f} s")
+    log.print(f"Average UNet time per image: {avg_unet_time:.4f} s")
+    log.print(f"Average decoder time per image: {avg_decoder_time:.4f} s")
+    log.print(f"Average UNet time per step: {avg_unet_step_time:.6f} s")
+    log.print(f"Saved SR result(s) to: {output_path}")
 
 
 if __name__ == "__main__":
