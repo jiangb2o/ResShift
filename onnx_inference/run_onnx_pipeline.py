@@ -51,7 +51,7 @@ class OnnxRunner:
         self.backend = "onnxruntime" if ort is not None else "onnx-reference"
         if ort is not None:
             self.session = ort.InferenceSession(
-                str(model_path), providers=["CUDAExecutionProvider", "CPUExecutionProvider"]
+                str(model_path), providers=["TensorrtExecutionProvider", "CUDAExecutionProvider", "CPUExecutionProvider"]
             )
             self.input_names = [x.name for x in self.session.get_inputs()]
             self.output_name = self.session.get_outputs()[0].name
@@ -327,13 +327,13 @@ def main() -> None:
         else:
             current_output = output_path
         cv2.imwrite(str(current_output), postprocess_image(sr_tensor))
-        if (idx % 10 == 0):
-            log.print(
-                f"[{idx}/{total_images}] (measure) "
-                f"{image_path.name} -> {current_output.name}, total={elapsed_time:.4f} s, "
-                f"encoder={profile['encoder']:.4f} s, unet={profile['unet']:.4f} s, "
-                f"decoder={profile['decoder']:.4f} s, unet_steps={int(profile['unet_steps'])}"
-            )
+        # if (idx % (total_images / 10) == 0):
+        #     log.print(
+        #         f"[{idx}/{total_images}] (measure) "
+        #         f"{image_path.name} -> {current_output.name}, total={elapsed_time:.4f} s, "
+        #         f"encoder={profile['encoder']:.4f} s, unet={profile['unet']:.4f} s, "
+        #         f"decoder={profile['decoder']:.4f} s, unet_steps={int(profile['unet_steps'])}"
+        #     )
 
     avg_time = total_elapsed / max(measured_images, 1)
     avg_encoder_time = total_encoder_elapsed / max(measured_images, 1)

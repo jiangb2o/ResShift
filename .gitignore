@@ -11,3 +11,4 @@ quantization/calibration64/
 quantization/calibration128/
 *.pth
 .paper/
+*.engine
